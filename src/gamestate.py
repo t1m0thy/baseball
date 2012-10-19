@@ -232,7 +232,8 @@ class GameState:
         logger.debug("Swinging Strike")
 
     def add_foul(self):
-        self.strikes += 1
+        if self.strikes < 2:
+            self.strikes += 1
         self.pitch_sequence += constants.FOUL
         logger.debug("Foul")
 
@@ -281,7 +282,7 @@ class GameState:
         logger.info("runners now 1st %s, 2nd %s, 3rd, %s" % (self.runner_on_first, self.runner_on_second, self.runner_on_third))
         self.reset_atbat()
         
-    def out_description(self, text, location, tokens):
+    def add_out_description(self, text, location, tokens):
         self.event_text = text #TODO: - not correct
         
     def fielder_substitution(self, text, location, tokens):
