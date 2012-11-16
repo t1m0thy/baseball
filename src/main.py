@@ -1,31 +1,33 @@
-import lxml.html
-from lxml.cssselect import CSSSelector
-import mechanize
-import os
 import pyparsing as pp
 
-GAME_CACHE_PATH = "../games/game_%s.html"
 
-def get_game_html(gameid, force_reload=False):      
-    if force_reload or not os.path.isfile(GAME_CACHE_PATH%gameid):
-        print "getting game "
-        br = mechanize.Browser()
-        # Browser options
-        br.set_handle_equiv(True)
-        br.set_handle_redirect(True)
-        br.set_handle_referer(True)
-        br.set_handle_robots(False)
-        br.addheaders = [('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT6.0; en-US; rv:1.9.0.6')]
-        page = br.open("http://www.pointstreak.com/baseball/boxscore.html?gameid=%s" % gameid)
+from bs4 import BeautifulSoup
 
-        html = br.response().read()
-        
-        f = open(GAME_CACHE_PATH%gameid,'aw')
-        f.write(html)
-        f.close()
-    return open(GAME_CACHE_PATH%gameid,'r').read()
+import webbrowser
+#get_game_html(PS_2012_CCL_URL, LISTINGS_CACHE_PATH%"PS_CCL_2012")
 
-        
+from constants import POSITIONS
+
+import sqlalchemy
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from models import event
+import pointstreakparser as psp
+import constants
+
+def init_database():
+    #engine = create_engine('sqlite:///:memory:', echo=False)
+    engine = create_engine('sqlite:///data.sqlite', echo=False)
+    event.Base.metadata.create_all(engine) 
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    return session
+
+def div_id_dict(element):
+    return dict((d.attrs["id"], d) for d in element.findAll("div") if d.has_attr("id"))
+      
+
         
 class HalfInning:
     def __init__(self, pbp_string, source="pointstreak"):
@@ -42,38 +44,84 @@ if __name__ == "__main__":
     import setuplogger
     import logging
     import pointstreakparser as psp
-    rootlogger = setuplogger.setupRootLogger(logging.WARNING)
-    rootlogger.info("Test Logging")
-    #GAME_ID = 110036   
-    #GAME_ID = 109950 
-    #GAME_ID = 109678
-    #GAME_ID = 109772
-    GAME_ID = 109776
+    rootlogger = setuplogger.setupRootLogger(logging.WARN)
+    logger = logging.getLogger("main")
+#    testgames = [110036,   
+#                 109950,
+#                 109678,
+#                 109772,
+#                 109776
+#                 ]
     import gamestate    
-    game = gamestate.GameState()
-    game.game_id = GAME_ID
-    
-    html = get_game_html(GAME_ID)
-    tree = lxml.html.fromstring(html)    
-    innings = [inning for inning in tree.find_class("inning")]
-    halfs = [HalfInning(s.text_content()) for s in innings if len(s) > 0] # len > 0 strips unwanted
-    
-    parser = psp.PointStreakParser(game=game)
 
-    top = True    
-    for h in halfs:
-        game.new_half()
-        print "%s of inning %s" % (game.get_half_string(), game.inning)
-        for title, text in h.events:
-            try:
-                parser.parsePlay(text)
-            except pp.ParseException, pe:
-                #print title
+    playoff = psp.get_game_html(psp.PS_2012_CCL_PLAYOFF_URL, constants.LISTINGS_CACHE_PATH%"PS_CCL_PLAYOFF_2012")
+
+    playoff_soup = BeautifulSoup(playoff)
+    links = playoff_soup.find_all("a")
+    scores = [l for l in links if l.text == "final"]
+    playoff_gameids = [s.attrs["href"].split('=')[1] for s in scores]
+
+    games = []
+    parser = psp.PointStreakParser()
+    
+    session = init_database()
+    for gameid in playoff_gameids:
+        print gameid        
+        html = psp.get_pointstreak_game(gameid)
+        try:
+            soup = BeautifulSoup(html)
+            divs = div_id_dict(soup)
+    
+            tds = divs[psp.DIV_ID_GAME_SUMMARY].findAll("td")
+            awayteam, hometeam = [td.text.strip() for td in tds if "psbb_box_score_team" in td.attrs.get("class", [])]
+    
+            game = gamestate.GameState()
+            game.home_team_id = hometeam
+            game.visiting_team = awayteam
+            
+            game.game_id = gameid
+            parser.set_game(game)
+                    
+            #=======================================================================
+            # Parse Players and Stats
+            #=======================================================================
+    
+            away_starting_lineup, home_starting_lineup = psp.scrape_pointstreak_xml_lineups(gameid)
+    
+            #=======================================================================
+            # Parse plays
+            #=======================================================================
+            pbp_div = divs[psp.DIV_ID_PLAYBYPLAY]
+            innings = [tr for tr in pbp_div.findAll("tr") if "inning" in tr.attrs.get("class",[])]
+            halfs = [HalfInning(s.text) for s in innings]
+    
+            game.set_away_lineup(away_starting_lineup)
+            game.set_home_lineup(home_starting_lineup)
+            
+            
+            for h in halfs:
+                game.new_half()
+    
                 #print "%s of inning %s" % (game.get_half_string(), game.inning)
-                #print pe.markInputline()
-                rootlogger.error("%s: %s of inning %s" % (title, game.get_half_string(), game.inning) + '\n' +
-                                     pe.markInputline())
-                #raise
-    
-    
-    
+                for title, text in h.events:
+                    try:
+                        if "substitution" not in title.lower():
+                            game.new_batter(' '.join(title.split()[1:]))
+                        game = parser.parsePlay(text)
+                        
+                        session.add(game.copy_to_event_model())
+                    except pp.ParseException, pe:
+                        #print title
+                        #print "%s of inning %s" % (game.get_half_string(), game.inning)
+                        #print pe.markInputline()
+                        rootlogger.error("%s: %s of inning %s" % (title, game.get_half_string(), game.inning) + '\n' +
+                                             pe.markInputline())
+                        #raise
+        
+            session.commit()    
+            games.append(game)
+        except Exception:
+            logger.exception("Error Scraping Game")
+            if raw_input("show_problem_page?") == 'y':
+                webbrowser.open_new_tab(psp.get_point_streak_url(gameid))
+                raise

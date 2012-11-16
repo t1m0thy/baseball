@@ -11,10 +11,16 @@ import logging
 logger = logging.getLogger("gamestate")
 import constants
 
+from models import event
+import eventfields
+
+MODEL_LOOKUP_DICT = eventfields.lookup_dict()
+
 class GameState:
     def __init__(self):
         self.game_id = None
         self.visiting_team = None
+
         self.inning = 0
         self.bat_home_id = 0 
         self.outs = 0
@@ -23,14 +29,17 @@ class GameState:
         self.pitch_sequence = ''
         self.visitor_score = 0
         self.home_score = 0
+        
         self.batter = None
         self.batter_hand = None
         self.result_batter = None
         self.result_batter_hand = None
+        
         self.pitcher = None
         self.pitcher_hand = None
         self.result_pitcher = None
         self.result_pitcher_hand = None
+        
         self.catcher = None
         self.first_baseman = None
         self.second_baseman = None
@@ -39,14 +48,18 @@ class GameState:
         self.left_fielder = None
         self.center_fielder = None
         self.right_fielder = None
+        
         self.runner_on_first = None
         self.runner_on_second = None
         self.runner_on_third = None
+        
         self.event_text = None
         self.leadoff_flag = False
         self.pinch_hit_flag = False
         self.defensive_position = None
         self.lineup_position = None
+        
+        #TODO
         self.event_type = None
         self.batter_event_flag = False
         self.official_time_at_bat_flag = False
@@ -176,17 +189,84 @@ class GameState:
         self.fielder_with_tenth_assist = None
         self.unknown_fielding_credit_flag = False
         self.uncertain_play_flag = False
+        
+        # Non Model attributes:
+        self._next_batter_pinch = False
+        self._next_batter_leadoff = False
+        
+    def set_home_lineup(self, lineup):
+        """
+        set with Lineup object
+        """
+        self.home_lineup = lineup 
+        
+    def set_away_lineup(self, lineup):
+        """
+        set with Lineup object
+        """
+        self.away_lineup = lineup
+    
+    def _swap_lineups(self, bat_home=True):
+        """
+        set with a list of players in numbered positioin order
+        """
+        if bat_home:
+            self.batting_lineup = self.home_lineup
+            self.fielding_lineup = self.away_lineup
+        else:
+            self.batting_lineup = self.away_lineup
+            self.fielding_lineup = self.home_lineup
+            
+        fielder_pos_dict = self.fielding_lineup.position_dict()
+        
+        self.pitcher = fielder_pos_dict["P"]
+        self.catcher = fielder_pos_dict["C"]
+        self.first_baseman = fielder_pos_dict["1B"]
+        self.second_baseman = fielder_pos_dict["2B"]
+        self.third_baseman  = fielder_pos_dict["3B"]
+        self.shortstop = fielder_pos_dict["SS"]
+        self.left_fielder = fielder_pos_dict["LF"]
+        self.center_fielder = fielder_pos_dict["CF"]
+        self.right_fielder = fielder_pos_dict["RF"]
+            
+    def copy_to_event_model(self):
+        newmodel = event.Event()
+        for key, modelattribute in MODEL_LOOKUP_DICT.items():
+            newmodel.__dict__[modelattribute] = self.__dict__[key]
+        return newmodel
 
-    def reset_atbat(self):
+    def new_batter(self, batter):
+        self.batter = batter
         self.balls = 0
         self.strikes = 0
         self.outs_on_play = 0
         self.pitch_sequence = ''
         self.event_text = ''
-        self.pinch_hit_flag = False
+        
+        if self.bat_home_id:
+            current_lineup = self.home_lineup
+        else:
+            current_lineup = self.away_lineup
+        try:
+            player = current_lineup.find_player_by_name(self.batter)
+            self.defensive_position = player.position
+            self.lineup_position = player.order
             
-    def new_batter(self, batter):
-        self.batter = batter
+        except KeyError, e:
+            logger.error(str(e) + "\n No found in lineup \n" + str(current_lineup))
+            raise
+        if self._next_batter_leadoff:
+            self._next_batter_leadoff = False
+            self.leadoff_flag = True
+        else:
+            self.leadoff_flag = False
+        
+        if self._next_batter_pinch:
+            self._next_batter_pinch = False
+            self.pinch_hit_flag = True
+        else:
+            self.pinch_hit_flag = False
+        
         logger.debug("new batter %s" % batter)
 
     def new_inning(self):
@@ -206,16 +286,16 @@ class GameState:
                 self.inning += 1
         else:
             self.inning = 1
+        self._swap_lineups(self.bat_home_id)        
+        self._next_batter_leadoff = True
         logger.debug("new half: inning %s, %s" % (self.inning, self.get_half_string()))
-        
+            
     def get_half_string(self):
         if self.half_inning:
             return "Bottom"
         else:
             return "Top"
-        
 
-        
     def add_ball(self):
         self.balls += 1
         self.pitch_sequence += constants.BALL
@@ -244,7 +324,6 @@ class GameState:
     def add_out(self):
         self.outs += 1
         self.outs_on_play += 1
-        self.reset_atbat()
         logger.debug("Out %s" % self.outs)
         
     def add_score(self):
@@ -253,7 +332,6 @@ class GameState:
             self.home_score += 1
         else:
             self.visitor_score += 1
-        self.reset_atbat()
         logger.debug("Score now Home %s, Vis %s" % (self.home_score, self.visitor_score))
             
     def add_advance(self, text, location, tokens):
@@ -264,7 +342,7 @@ class GameState:
         This will make it easier to use this method with whatever parsing means we need
         """
         tdict = tokens.asDict()
-        player = '-'.join(tdict["player"])
+        player = ' '.join(tdict["player"][1:])
         base = tdict["base"][0]
         logger.info("%s to %s" % ( player, base))
         if base == '1st':
@@ -280,7 +358,6 @@ class GameState:
                 self.runner_on_second = None
             self.runner_on_third = player
         logger.info("runners now 1st %s, 2nd %s, 3rd, %s" % (self.runner_on_first, self.runner_on_second, self.runner_on_third))
-        self.reset_atbat()
         
     def add_out_description(self, text, location, tokens):
         self.event_text = text #TODO: - not correct
@@ -289,5 +366,8 @@ class GameState:
         pass #print tokens.asDict()
 
     def offensive_substitution(self, text, location, tokens):
+        self._next_batter_pinch = True
+        logger.error(tokens)
+                
         pass #print tokens.asDict()
         

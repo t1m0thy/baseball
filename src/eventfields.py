@@ -223,3 +223,19 @@ def print_attribute_list():
     for a in atts:                                                            
         print ' '*8 + 'self.%s = None'%a
         
+def lookup_dict():
+    ed = dict((field[1].lower().replace(' ','_'), field[2]) for field in cw_event_fields)
+    eed = dict((field[1].lower().replace(' ','_'), field[2]) for field in cw_event_fields_extended)
+    return dict(ed.items() + eed.items())
+    
+def print_model():
+    """
+    This function was used to print out the attribute setup code for GameState 
+    """
+    atts = [field[2] for field in cw_event_fields]
+    for a in atts:                                                            
+        print ' '*8 + 'self.%s = None'%a
+    
+    atts = [field[2] for field in cw_event_fields_extended]
+    for a in atts:                                                            
+        print ' '*8 + 'self.%s = None'%a
