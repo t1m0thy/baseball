@@ -24,3 +24,38 @@ def get_game_html(url, cache_filename=None, force_reload=False):
         else:
             return html
     return open(cache_filename,'r').read()
+
+
+class RawEvent:
+    def is_sub(self):
+        raise NotImplementedError
+
+    def batter(self):
+        raise NotImplementedError
+
+    def title(self):
+        raise NotImplementedError
+
+    def text(self):
+        raise NotImplementedError
+
+class HalfInning:
+    def raw_events(self):
+        """
+        iterator that returns RawEvents
+        """
+        raise NotImplementedError
+    
+
+
+class GameScraper:
+    
+    def home_team(self):
+        raise NotImplementedError
+    
+    def away_team(self):
+        raise NotImplementedError
+    
+    def halfs(self):
+        raise NotImplementedError
+         

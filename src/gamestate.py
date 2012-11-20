@@ -7,7 +7,7 @@ Therefore, at any time, this class may be added as a line in a SQL event databas
 """
 
 import logging
-
+import pprint
 logger = logging.getLogger("gamestate")
 import constants
 
@@ -253,7 +253,7 @@ class GameState:
             self.lineup_position = player.order
             
         except KeyError, e:
-            logger.error(str(e) + "\n No found in lineup \n" + str(current_lineup))
+            logger.error(str(e) + "\n %s not found in lineup \n%s" % (self.batter, str(current_lineup)))
             raise
         if self._next_batter_leadoff:
             self._next_batter_leadoff = False
@@ -367,7 +367,12 @@ class GameState:
 
     def offensive_substitution(self, text, location, tokens):
         self._next_batter_pinch = True
-        logger.error(tokens)
+        newplayer = tokens[constants.PARSING.NEW_PLAYER]
+        replacing = tokens[constants.PARSING.REPLACING]
+
                 
+        logger.error(pprint.pformat(tokens.asDict()))
+        
+        
         pass #print tokens.asDict()
         

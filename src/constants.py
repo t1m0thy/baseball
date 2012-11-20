@@ -42,6 +42,7 @@ GAME_CACHE_PATH = CACHE_PATH + "games/game_%s.html"
 GAME_XML_CACHE_PATH = CACHE_PATH + "games/game_%s_start.xml"
 GAME_XML_SEQ_CACHE_PATH = CACHE_PATH + "games/game_%s_seq_%s.xml"
 
+PLAYER_CACHE_PATH = CACHE_PATH + "players/player_%s.html"
 LISTINGS_CACHE_PATH = CACHE_PATH + "listings/list_%s.html" 
 
 
@@ -70,3 +71,8 @@ EVT_CODE_DOUBLE = 21
 EVT_CODE_TRIPLE = 22
 EVT_CODE_HOME_RUN = 23
 #EVT_CODE_MISSING_PLAY_(OBSOLETE) = 24
+
+class PARSING:
+    # TODO: fill out the rest of this class of parser token constants
+    NEW_PLAYER = "new player"
+    REPLACING = "replacing"

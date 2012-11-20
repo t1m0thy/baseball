@@ -20,6 +20,7 @@ class Player:
 
 class PlayerError(BaseException): pass
     
+
 class Lineup(object):
     """
     maintain one team's line up or 9 or 10 players
