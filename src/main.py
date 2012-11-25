@@ -1,3 +1,4 @@
+import sys
 import logging
 import webbrowser
 import pyparsing as pp
@@ -65,6 +66,9 @@ if __name__ == "__main__":
             game.set_away_lineup(away_starting_lineup)
             game.set_home_lineup(home_starting_lineup)
     
+            away_roster, home_roster = scraper.game_rosters()
+            game.set_away_roster(away_roster)
+            game.set_home_roster(home_roster)
             #=======================================================================
             # Parse plays
             #=======================================================================
@@ -75,7 +79,8 @@ if __name__ == "__main__":
                     try:
                         if not raw_event.is_sub():
                             game.new_batter(raw_event.batter())
-                        parser.parsePlay(raw_event.text())
+                        parser.parse_event(raw_event.text())
+                        
                         session.add(game.copy_to_event_model())
                     except pp.ParseException, pe:
                         rootlogger.error("%s: %s of inning %s\n%s" % (raw_event.title(), 
@@ -83,10 +88,16 @@ if __name__ == "__main__":
                                                                       game.inning,
                                                                       pe.markInputline())
                                          )
+                        raise
+                    except Exception, e:
+                        rootlogger.error("Error %s in game %s: %s of inning %s from string: %s" % (str(e), game.game_id, game.get_half_string(), game.inning,raw_event.text()))
+                        raise
             session.commit()    
             games.append(game)
-        except Exception:
-            logger.exception("Error Scraping Game")
+        except Exception, e:
+            logger.exception("Error Scraping Game in %s of inning %s" % (game.get_half_string(), game.inning))
             if raw_input("show_problem_page?") == 'y':
                 webbrowser.open_new_tab(scraper.review_url())
                 raise
+            else:
+                sys.exit()

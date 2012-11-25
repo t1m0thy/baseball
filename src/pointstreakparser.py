@@ -4,7 +4,7 @@ import lxml
 from scrapetools import GameScraper, HalfInning, RawEvent
 from gamewrapper import GameWrapper
 from scrapetools import get_game_html
-from lineup import Lineup
+from lineup import Lineup, Player, PlayerList
 import constants
 
 import logging
@@ -27,11 +27,14 @@ DIV_ID_PITCHING_STATS = "psbb_pitchingStats"
 DIV_ID_PLAYBYPLAY = "psbb_playbyplay"
 DIV_ID_GAME_SUMMARY = "psbb_game_summary"
 
-MAX_EVENTS_COUNT = 300
+MAX_EVENTS_COUNT = 30
             
     
 
 class PointStreakParser:
+    """
+    
+    """
     def __init__(self, game=None):
         self.gamewrap = GameWrapper(game)
         self.setup_parser()
@@ -91,33 +94,48 @@ class PointStreakParser:
         #===============================================================================
         # Base Running
         #===============================================================================
-    
-        advances = (player + pp.Keyword("advances to", caseless=True) + pp.OneOrMore(pp.Word(pp.alphanums)).setResultsName("base") + paranthetical.copy().setResultsName("info")).setParseAction(self.gamewrap.advance)
+        base = pp.OneOrMore(pp.Word(pp.alphanums)).setResultsName("base")
+        advances = (player + pp.Keyword("advances to", caseless=True) + base + paranthetical.copy().setResultsName("info")).setParseAction(self.gamewrap.advance)
             
         #===========================================================================
         # Scoring
         #===========================================================================
-        earned = pp.Keyword("Earned", caseless = True) + paranthetical.copy().setResultsName("play")
-        unearned = pp.Keyword("Unearned", caseless = True) + paranthetical.copy().setResultsName("player_num")
-        scores = (player + pp.Keyword("scores", caseless=True) + (unearned | earned)).setParseAction(self.gamewrap.score)
+        end_span =  pp.Optional(pp.Literal('</span>'))
+        earned_span = pp.Optional(pp.Literal('<span class="earned">'))
+        unearned_span = pp.Optional(pp.Literal('<span class="unearned">'))
+        score_span = pp.Optional(pp.Literal('<span class="score">'))
+        earned = earned_span + pp.Keyword("Earned", caseless = True) + end_span + paranthetical.setResultsName("play")
+        unearned = unearned_span + pp.Keyword("Unearned", caseless = True) + end_span + paranthetical.setResultsName("player_num")
+        score_word = score_span + pp.Keyword("scores", caseless=True) + end_span
+        scores = (player + score_word + (unearned | earned)).setParseAction(self.gamewrap.score)
     
         #===========================================================================
         # SUBS
         #===========================================================================
+        replacing = player_no_num.setResultsName("replacing")
+        new_player = player.setResultsName("new player")
         position = pp.OneOrMore(pp.Word(pp.alphanums))
-        fielder_sub = player.setResultsName("new player") + ((pp.Keyword("subs for") + player_no_num + pp.Keyword("at")) | (pp.Keyword("moves to")|pp.Keyword("subs at"))) + position.setResultsName("position") + period
-        fielder_sub.setParseAction(self.gamewrap.fielder_sub)
-        offensive_sub = player.setResultsName("new player") + pp.Keyword("subs for") + player_no_num.setResultsName("replacing") + period
+        defensive_sub = pp.Keyword("Defensive Substitution.") + new_player + ((pp.Keyword("subs for") + replacing + pp.Keyword("at")) | (pp.Keyword("moves to")|pp.Keyword("subs at"))) + position.setResultsName("position") + period
+        defensive_sub.setParseAction(self.gamewrap.defensive_sub)
+        dh_sub = pp.Keyword("Defensive Substitution.") + new_player + pp.Keyword("subs for") + replacing + period
+        dh_sub.setParseAction(self.gamewrap.defensive_sub)
+
+        pitching_sub = pp.Keyword("Pitching Substitution.") + new_player + pp.Keyword("subs for") + replacing + period
+        pitching_sub.setParseAction(self.gamewrap.defensive_sub)
+
+        offensive_sub = pp.Keyword("Offensive Substitution.") + new_player + pp.Keyword("subs for") + replacing + period
         offensive_sub.setParseAction(self.gamewrap.offensive_sub)
-        runner_sub = player.setResultsName("new player") + pp.Keyword("runs for") + player_no_num.setResultsName("replacing") + pp.Keyword("at") + pp.Word(pp.alphanums).setResultsName("base") + pp.Word(pp.alphanums)  + period
+        runner_sub = pp.Keyword("Offensive Substitution.") + new_player + pp.Keyword("runs for") + replacing + pp.Keyword("at") + pp.Word(pp.alphanums).setResultsName("base") + pp.Word(pp.alphanums)  + period
         runner_sub.setParseAction(self.gamewrap.offensive_sub)
         
+        subs = defensive_sub | dh_sub | pitching_sub | offensive_sub | runner_sub
         #===========================================================================
         # Summary 
         #===========================================================================
-        self.event_parser = pp.delimitedList(fielder_sub | offensive_sub | runner_sub | pitches | advances | putout | scores)  + pp.StringEnd()
+        self.event_parser = pp.delimitedList(subs | pitches | advances | putout | scores)  + pp.StringEnd()
         
-    def parsePlay(self, text):
+    def parse_event(self, text):
+        self.last_event_text = text
         self.event_parser.parseString(text)
         return self.gamewrap._game
     
@@ -144,26 +162,26 @@ class PointStreakScraper(GameScraper):
             cache_filename = GAME_XML_SEQ_CACHE_PATH % (("PS" + self.gameid), seq)
         return get_game_html(url, cache_filename, force_reload)            
                     
-    def _add_pitcher(self, lineup, player):
-        lineup.add_player(player.get("Name"), 
-                      player.get("Number"), 
-                      player.get("Order"), 
-                      constants.P, 
-                      player.get("Hand"),
-                      iddict={"pointstreak":player.get("PlayerId")})
+    def _add_pitcher(self, lineup, player_dict):
+        lineup.add_player(Player(player_dict.get("Name"), 
+                                  player_dict.get("Number"), 
+                                  player_dict.get("Order"), 
+                                  constants.P, 
+                                  player_dict.get("Hand"),
+                                  iddict={"pointstreak":player_dict.get("PlayerId")}))
     
     def _add_positions(self, lineup, playerlist):
-        for player in playerlist:
+        for player_dict in playerlist:
             try:
-                lineup.add_player(player.get("Name"), 
-                                  player.get("Number"), 
-                                  player.get("Order"), 
-                                  player.get("Position"), 
-                                  player.get("Hand"),
-                                  iddict={"pointstreak":player.get("PlayerId")})
-            except AttributeError:
-                logger.exception("from player = %s" % player)
-    
+                lineup.add_player(Player(player_dict.get("Name"), 
+                                          player_dict.get("Number"), 
+                                          player_dict.get("Order"), 
+                                          player_dict.get("Position"), 
+                                          player_dict.get("Hand"),
+                                          iddict={"pointstreak":player_dict.get("PlayerId")}))
+            except (AttributeError, KeyError):
+                logger.error("making Player from dict = %s" % player_dict)
+                raise
     def starting_lineups(self):
         complete = False
         seq = 0
@@ -193,23 +211,23 @@ class PointStreakScraper(GameScraper):
                     self._add_pitcher(home_lineup, home_pitchers[0])
     
                 try:
-                    complete = home_lineup.is_complete(True)
+                    complete = home_lineup.is_complete(raise_reason = False)
                 except StandardError, e:
-                    print [p.order for p in home_lineup.players]
                     logging.error(str(e) + "\nHome \n" + str(home_lineup))
-                    print home_lineup.find_player_by_order(1)
     
                 try:
-                    complete &= away_lineup.is_complete(True)            
+                    complete &= away_lineup.is_complete(raise_reason = False)            
                 except StandardError, e:
                     logging.error(str(e) + "\nAway \n" + str(away_lineup))
         
             except lxml.etree.XMLSyntaxError:
                 logger.error("Error parsing lineup from game %s seq %s" % (self.gameid, seq))
-                
-                if seq > MAX_EVENTS_COUNT:
-                    raise
             seq += 1
+            if seq > MAX_EVENTS_COUNT:
+                # check each lineup for completeness, raising the reason for incomplete
+                home_lineup.is_complete(raise_reason = True)
+                away_lineup.is_complete(raise_reason = True)
+            
         return away_lineup, home_lineup
       
 class PSPHalfInningXML(HalfInning):
@@ -220,17 +238,22 @@ class PSPHalfInningXML(HalfInning):
         for e in self._etree.getchildren():
             tag = e.tag.split("}")[-1]
             if tag != "Summary":
-                yield PSPRawEventXML(tag, e.text, e.attrib.get("Name"))
+                yield PSPRawEventXML(e)
 
 class PSPRawEventXML(RawEvent):
-    def __init__(self, event_type, text, batter=None): 
+    def __init__(self, element):
+        tag = element.tag.split("}")[-1]
+        event_type, text, batter, sub_type = tag, element.text, element.attrib.get("Name"), element.attrib.get("Type") 
         try:
             assert(event_type in ["Atbat", "Substitution"])
         except AssertionError, e:
             print event_type
             logger.exception("Found event tag %s" % event_type)
         self._type = event_type
-        self._batter = batter            
+        self._batter = batter
+        # If this is a sub, add the Type to the beginning of the string: ie.  "Offensive Substitution"
+        if sub_type != None:
+            text = sub_type+'. '+text
         self._text = text
     
     def is_sub(self):
@@ -259,35 +282,43 @@ class PointStreakXMLScraper(PointStreakScraper):
         self.game_info = dict(self.root.find(".//{*}BaseballGame").items())
 
     def home_team(self):
+        """ return name of home team """
         return self.game_info["HomeTeam"]
 
     def away_team(self):
+        """ return name of away team """
         return self.game_info["VisitingTeam"]
 
     def review_url(self):
+        """ the url used for parsing game.  useful for reviewing site source """
         return PS_GAME_XML % self.gameid 
 
     def halfs(self):
+        """ iterator that returns HalfInning Objects through the game """
         halfs = [e for e in self.root.find(".//{*}PlayByPlay").getchildren()]
         for half in halfs: #what a mouthful!
             yield PSPHalfInningXML(half)
             
-    def game_roster(self):
+    def game_rosters(self):
+        """ return full list of all players in the game """
         away = self.root.find(".//{*}VisitingTeam")
         away_offense = [dict(e.items()) for e in away.find(".//{*}Offense").getchildren()]
         away_replaced = [dict(e.items()) for e in away.find(".//{*}ReplacedOffense").getchildren()]
-        away_pitchers = [dict(e.items()) for e in away.find(".//{*}Pitchers").getchildren()]
+        away_pitchers = [dict(e.items() + [("Position", "P")]) for e in away.find(".//{*}Pitchers").getchildren()]
 
         home = self.root.find(".//{*}HomeTeam")
         home_offense = [dict(e.items()) for e in home.find(".//{*}Offense").getchildren()]
         home_replaced = [dict(e.items()) for e in home.find(".//{*}ReplacedOffense").getchildren()]
-        home_pitchers = [dict(e.items()) for e in home.find(".//{*}Pitchers").getchildren()]
-        
-        away_roster = dict([(d["Name"], d["PlayerId"]) for d in away_offense + away_replaced + away_pitchers])
-        home_roster = dict([(d["Name"], d["PlayerId"]) for d in home_offense + home_replaced + home_pitchers])
+        home_pitchers = [dict(e.items() + [("Position", "P")]) for e in home.find(".//{*}Pitchers").getchildren()]
+                    
+        away_roster = PlayerList()
+        home_roster = PlayerList()
+        self._add_positions(away_roster, away_offense + away_replaced + away_pitchers)
+        self._add_positions(home_roster, home_offense + home_replaced + home_pitchers)
 
         return away_roster, home_roster
 
-    def player_from_id(self, player_id):
-        html = get_game_html(PS_PLAYER_URL % player_id, PLAYER_CACHE_PATH % ("PS" + str(player_id)))
-        return html
+    def _player_page_from_id(self, player_id):
+        """ return point streak html from a player id """
+        return get_game_html(PS_PLAYER_URL % player_id, PLAYER_CACHE_PATH % ("PS" + str(player_id)))
+        

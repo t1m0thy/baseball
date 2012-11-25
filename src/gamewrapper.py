@@ -31,16 +31,16 @@ class GameWrapper:
         self._game.add_out_description(*args)
     
     def out(self, *args):
-        self._game.add_out(*args)
+        self._game.parse_out(*args)
     
     def advance(self, *args):
-        self._game.add_advance(*args)
+        self._game.parse_advance(*args)
     
     def score(self, *args):
-        self._game.add_score(*args)
+        self._game.parse_score(*args)
     
-    def fielder_sub(self, *args):
-        self._game.fielder_substitution(*args)
+    def defensive_sub(self, *args):
+        self._game.parse_defensive_sub(*args)
     
     def offensive_sub(self, *args):
-        self._game.offensive_substitution(*args)
+        self._game.parse_offensive_sub(*args)

@@ -25,6 +25,42 @@ CALLED_BALL_BECAUSE_PITCHER_WENT_TO_HIS_MOUTH = 'V'
 BALL_PUT_INTO_PLAY_BY_BATTER = 'X'
 BALL_PUT_INTO_PLAY_ON_PITCHOUT = 'Y'
 
+POSITION_LOOKUP = {"P":"P",
+                   "PR": "P",
+                   "Pitching": "P", 
+                  "Pitcher": "P",
+                  "C":"C",
+                  "Catching": "C",
+                  "Catcher": "C",
+                  "First Base": "1B",
+                  "1B": "1B",
+                  "1st Base": "1B",
+                  "1st": "1B",
+                  "2B": "2B",
+                  "Second Base": "2B",
+                  "2nd Base": "2B",
+                  "2nd": "2B",
+                  "3B": "3B",
+                  "Third Base": "3B",
+                  "3rd Base": "3B",
+                  "3rd": "3B",
+                  "SS": "SS",
+                  "Short Stop": "SS",
+                  "Short": "SS",
+                  "LF": "LF",
+                  "Left Field": "LF",
+                  "Left": "LF",
+                  "CF": "CF",
+                  "Center Field": "CF",
+                  "Center": "CF",
+                  "RF": "RF",
+                  "Right Field": "RF",
+                  "Right": "RF",
+                  "DH": "DH",
+                  "Designated Hitter": "DH",
+                  "Pinch Hitter": "PH",
+                  "PH": "PH"
+                  }
 POSITIONS = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"]
 DH = "DH"
 P = "P"
@@ -76,3 +112,4 @@ class PARSING:
     # TODO: fill out the rest of this class of parser token constants
     NEW_PLAYER = "new player"
     REPLACING = "replacing"
+    POSITION = "position"

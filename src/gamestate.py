@@ -193,19 +193,31 @@ class GameState:
         # Non Model attributes:
         self._next_batter_pinch = False
         self._next_batter_leadoff = False
+        self._home_place_in_batting_order = 1  #always start with leadoff batter
+        self._away_place_in_batting_order = 1  #always start with leadoff batter
+        self.current_order = 1
+        self._last_batter = None
         
     def set_home_lineup(self, lineup):
-        """
-        set with Lineup object
-        """
+        """ set home starting lineup with Lineup object """
         self.home_lineup = lineup 
+        for p in self.home_lineup:
+            p.atbats = 0
         
     def set_away_lineup(self, lineup):
-        """
-        set with Lineup object
-        """
+        """ set away starting lineup with Lineup object """
         self.away_lineup = lineup
+        for p in self.away_lineup:
+            p.atbats = 0
     
+    def set_home_roster(self, roster):
+        """ set all home players appearing in this game""" 
+        self.home_roster = roster
+        
+    def set_away_roster(self, roster):
+        """ set all away players appearing in this game""" 
+        self.away_roster = roster
+        
     def _swap_lineups(self, bat_home=True):
         """
         set with a list of players in numbered positioin order
@@ -213,9 +225,12 @@ class GameState:
         if bat_home:
             self.batting_lineup = self.home_lineup
             self.fielding_lineup = self.away_lineup
+            self.current_order = self._home_place_in_batting_order
+        
         else:
             self.batting_lineup = self.away_lineup
             self.fielding_lineup = self.home_lineup
+            self.current_order = self._away_place_in_batting_order
             
         fielder_pos_dict = self.fielding_lineup.position_dict()
         
@@ -235,6 +250,50 @@ class GameState:
             newmodel.__dict__[modelattribute] = self.__dict__[key]
         return newmodel
 
+    def _current_batting_lineup(self):
+        if self.bat_home_id:
+            return self.home_lineup
+        else:
+            return self.away_lineup
+
+    def _current_batting_roster(self):
+        if self.bat_home_id:
+            return self.home_roster
+        else:
+            return self.away_roster
+
+    def _current_fielding_lineup(self):
+        if self.bat_home_id:
+            return self.away_lineup
+        else:
+            return self.home_lineup
+
+    def _current_fielding_roster(self):
+        if self.bat_home_id:
+            return self.away_roster
+        else:
+            return self.home_roster
+
+    def _increment_batting_order(self):
+        # if the order was incremented for this batter already, don't
+        # this occurs in the case of a runner advancing twice (ie. after an error at first) in their atbat play
+        if self._last_batter == self.batter:
+            return
+        else:
+            self._last_batter = self.batter
+            if self.bat_home_id:
+                self._home_place_in_batting_order += 1
+                if self._home_place_in_batting_order > 9:
+                    self._home_place_in_batting_order = 1
+                self.current_order = self._home_place_in_batting_order
+            else:
+                self._away_place_in_batting_order += 1
+                if self._away_place_in_batting_order > 9:
+                    self._away_place_in_batting_order = 1
+                self.current_order = self._away_place_in_batting_order
+            # increment the atbat count
+            self._current_batting_lineup().find_player_by_name(self.batter).atbats += 1
+            
     def new_batter(self, batter):
         self.batter = batter
         self.balls = 0
@@ -242,19 +301,36 @@ class GameState:
         self.outs_on_play = 0
         self.pitch_sequence = ''
         self.event_text = ''
-        
-        if self.bat_home_id:
-            current_lineup = self.home_lineup
-        else:
-            current_lineup = self.away_lineup
+
         try:
-            player = current_lineup.find_player_by_name(self.batter)
-            self.defensive_position = player.position
-            self.lineup_position = player.order
-            
+            batter_player = self._current_batting_lineup().find_player_by_name(self.batter)
+            assert(batter_player.order == self.current_order)
+            #print "%s order %s matches %s" % (batter_player.name, batter_player.order, current_order)
+            self.defensive_position = batter_player.position
+            self.lineup_position = batter_player.order            
         except KeyError, e:
-            logger.error(str(e) + "\n %s not found in lineup \n%s" % (self.batter, str(current_lineup)))
-            raise
+            logger.warning(str(e) + " Not found in lineup for atbat")
+            try:
+                new_player = self._current_batting_roster().find_player_by_name(self.batter)
+                replacing_player = self._current_batting_lineup().find_player_by_order(self.current_order)
+                logger.warning("Used roster for auto-substitution of %s for %s" % (new_player.name, replacing_player.name))
+                self.offensive_sub(new_player.name, replacing_player.name)
+                self.defensive_position = new_player.position
+                self.lineup_position = new_player.order 
+            except KeyError:
+                raise StandardError("Auto Replace Failed.  %s not found in Roster" % self.batter)
+        except AssertionError, e:
+            logger.error(str(e) + "%s %s doesn't match expected order %s" % (batter_player.name, batter_player.order, self.current_order))
+            if batter_player.atbats == 0:
+                swap_with_player = self._current_batting_lineup().find_player_by_order(self.current_order)
+                if swap_with_player.atbats == 0:
+                    swap_with_player.order = batter_player.order
+                    batter_player.order = self.current_order
+                    logger.warning("Using roster for auto-order swap of %s for %s" % (batter_player.name, swap_with_player.name))
+                else:
+                    raise                
+            else:
+                raise
         if self._next_batter_leadoff:
             self._next_batter_leadoff = False
             self.leadoff_flag = True
@@ -288,7 +364,7 @@ class GameState:
             self.inning = 1
         self._swap_lineups(self.bat_home_id)        
         self._next_batter_leadoff = True
-        logger.debug("new half: inning %s, %s" % (self.inning, self.get_half_string()))
+        logger.info("new half: inning %s, %s" % (self.inning, self.get_half_string()))
             
     def get_half_string(self):
         if self.half_inning:
@@ -321,58 +397,121 @@ class GameState:
         pass
         # TODO: write pick off method
 
-    def add_out(self):
+    def parse_out(self, text, location, tokens):
+        tdict = tokens.asDict()    
+        player_name = ' '.join(tdict["player"][1:])
+        self.add_out(player_name)
+        
+    def add_out(self, player_name):
         self.outs += 1
         self.outs_on_play += 1
         logger.debug("Out %s" % self.outs)
+        if player_name == self.batter:
+            self._increment_batting_order()
+            
+    def parse_score(self, text, location, tokens):
+        tdict = tokens.asDict()
+        player_name = ' '.join(tdict["player"][1:])
+        self.add_score(player_name)
         
-    def add_score(self):
+    def add_score(self, player_name):
         self.runs_scored_in_this_half_inning += 1
         if self.bat_home_id:
             self.home_score += 1
         else:
             self.visitor_score += 1
         logger.debug("Score now Home %s, Vis %s" % (self.home_score, self.visitor_score))
+        if player_name == self.batter:
+            self._increment_batting_order()
             
-    def add_advance(self, text, location, tokens):
+    def parse_advance(self, text, location, tokens):
+        tdict = tokens.asDict()
+        player_name = ' '.join(tdict["player"][1:])
+        base = tdict["base"][0]
+        self.add_advance(player_name, base)
+        
+    def add_advance(self, player_name, base):
         """
         advance runners to a base
         
         TODO: break this into 3 specific methods to advance a runner to a specific base
         This will make it easier to use this method with whatever parsing means we need
         """
-        tdict = tokens.asDict()
-        player = ' '.join(tdict["player"][1:])
-        base = tdict["base"][0]
-        logger.info("%s to %s" % ( player, base))
+
+        logger.info("%s to %s" % ( player_name, base))
         if base == '1st':
-            self.runner_on_first = player 
+            self.runner_on_first = player_name 
         elif base == '2nd':
-            if self.runner_on_first == player:
+            if self.runner_on_first == player_name:
                 self.runner_on_first = None
-            self.runner_on_second = player
+            self.runner_on_second = player_name
         elif base == '3rd':
-            if self.runner_on_first == player:
+            if self.runner_on_first == player_name:
                 self.runner_on_first = None
-            if self.runner_on_second == player:
+            if self.runner_on_second == player_name:
                 self.runner_on_second = None
-            self.runner_on_third = player
+            self.runner_on_third = player_name
         logger.info("runners now 1st %s, 2nd %s, 3rd, %s" % (self.runner_on_first, self.runner_on_second, self.runner_on_third))
+        if player_name == self.batter:
+            self._increment_batting_order()
         
     def add_out_description(self, text, location, tokens):
         self.event_text = text #TODO: - not correct
+
+    def parse_defensive_sub(self, text, location, tokens):
+        new_player_name = ' '.join(tokens[constants.PARSING.NEW_PLAYER][1:])
+        replacing_name = ' '.join(tokens.get(constants.PARSING.REPLACING, []))
+        position = ' '.join(tokens.get(constants.PARSING.POSITION, []))
+        self.defensive_sub(new_player_name, replacing_name, position)        
         
-    def fielder_substitution(self, text, location, tokens):
-        pass #print tokens.asDict()
-
-    def offensive_substitution(self, text, location, tokens):
-        self._next_batter_pinch = True
-        newplayer = tokens[constants.PARSING.NEW_PLAYER]
-        replacing = tokens[constants.PARSING.REPLACING]
-
+    def defensive_sub(self, new_player_name, replacing_name, position=''):
+        # "moves to" or "subs at" Case
+        if replacing_name == '':
+            if position == '':
+                raise StandardError("Defensive Sub Error, no new position or replacement name")
+            current_defense = self._current_fielding_lineup()
+            try:
+                # moves to case
+                current_defense.find_player_by_name(new_player_name)
+                current_defense.set_player_position(new_player_name, position)
+            except KeyError:
+                # subs at case
+                new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
+                new_player.set_position(position)
+                removed_player = current_defense.find_player_by_position(position)
+                new_player.order = removed_player.order  
+                current_defense.remove_player(removed_player.name)
+                current_defense.add_player(new_player)
+        else:
+            possible_remove_player = self._current_fielding_lineup().find_player_by_name(replacing_name)
+            if possible_remove_player.position == position:
+                removed_player = self._current_fielding_lineup().remove_player(replacing_name)
+                new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
+                if position != '':
+                    new_player.set_position(position)
+                new_player.order = removed_player.order  
+            else: # the player being replaced is not in the position anymore
+                # this should only apply to taking a pitchers spot...
+                new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
+                if position != '':
+                    new_player.set_position(position)
+                new_player.order = possible_remove_player.order
+                #assert (possible_remove_player.position == 'P')
+                #possible_remove_player.order = None
+            self._current_fielding_lineup().add_player(new_player)
                 
-        logger.error(pprint.pformat(tokens.asDict()))
+    def parse_offensive_sub(self, text, location, tokens):
+        new_player_name = ' '.join(tokens[constants.PARSING.NEW_PLAYER][1:])
+        replacing_name = ' '.join(tokens.get(constants.PARSING.REPLACING, []))
+        self.offensive_sub(new_player_name, replacing_name)
         
+    def offensive_sub(self, new_player_name, replacing_name):
+        #TODO: this may not always be true
+        self._next_batter_pinch = True
+        removed_player = self._current_batting_lineup().remove_player(replacing_name)
+        new_player = self._current_batting_roster().find_player_by_name(new_player_name)
+        new_player.position = removed_player.position
+        new_player.order = removed_player.order  
+        self._current_batting_lineup().add_player(new_player)
         
-        pass #print tokens.asDict()
         
