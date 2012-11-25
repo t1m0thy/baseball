@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger("scraptools")
 
-def get_game_html(url, cache_filename=None, force_reload=False):      
+def get_cached_url(url, cache_filename=None, force_reload=False):      
     if force_reload or cache_filename is None or not os.path.isfile(cache_filename):
         logging.info("getting game at " +  url) 
         br = mechanize.Browser()
