@@ -53,15 +53,15 @@ class GameState:
         self.runner_on_second = None
         self.runner_on_third = None
         
-        self.event_text = None
+        self.event_text = None  #TODO: 
         self.leadoff_flag = False
         self.pinch_hit_flag = False
         self.defensive_position = None
         self.lineup_position = None
+
+        self.event_type = None #TODO: 
         
-        #TODO
-        self.event_type = None
-        self.batter_event_flag = False
+        self.batter_event_flag = False # True in near all cases except recording stolen bases or caught stealing events
         self.official_time_at_bat_flag = False
         self.hit_value = None
         self.sacrifice_hit_flag = False
@@ -234,15 +234,15 @@ class GameState:
             
         fielder_pos_dict = self.fielding_lineup.position_dict()
         
-        self.pitcher = fielder_pos_dict["P"]
-        self.catcher = fielder_pos_dict["C"]
-        self.first_baseman = fielder_pos_dict["1B"]
-        self.second_baseman = fielder_pos_dict["2B"]
-        self.third_baseman  = fielder_pos_dict["3B"]
-        self.shortstop = fielder_pos_dict["SS"]
-        self.left_fielder = fielder_pos_dict["LF"]
-        self.center_fielder = fielder_pos_dict["CF"]
-        self.right_fielder = fielder_pos_dict["RF"]
+        self.pitcher = fielder_pos_dict['P']
+        self.catcher = fielder_pos_dict['C']
+        self.first_baseman = fielder_pos_dict['1B']
+        self.second_baseman = fielder_pos_dict['2B']
+        self.third_baseman  = fielder_pos_dict['3B']
+        self.shortstop = fielder_pos_dict['SS']
+        self.left_fielder = fielder_pos_dict['LF']
+        self.center_fielder = fielder_pos_dict['CF']
+        self.right_fielder = fielder_pos_dict['RF']
             
     def copy_to_event_model(self):
         newmodel = event.Event()
@@ -397,22 +397,15 @@ class GameState:
         pass
         # TODO: write pick off method
 
-    def parse_out(self, text, location, tokens):
-        tdict = tokens.asDict()    
-        player_name = ' '.join(tdict["player"][1:])
-        self.add_out(player_name)
-        
-    def add_out(self, player_name):
+    def add_out(self, player_name, play):
         self.outs += 1
         self.outs_on_play += 1
+        print "{} {}".format(play.asDict(), play)
+        
         logger.debug("Out %s" % self.outs)
         if player_name == self.batter:
             self._increment_batting_order()
-            
-    def parse_score(self, text, location, tokens):
-        tdict = tokens.asDict()
-        player_name = ' '.join(tdict["player"][1:])
-        self.add_score(player_name)
+
         
     def add_score(self, player_name):
         self.runs_scored_in_this_half_inning += 1
@@ -424,12 +417,7 @@ class GameState:
         if player_name == self.batter:
             self._increment_batting_order()
             
-    def parse_advance(self, text, location, tokens):
-        tdict = tokens.asDict()
-        player_name = ' '.join(tdict["player"][1:])
-        base = tdict["base"][0]
-        self.add_advance(player_name, base)
-        
+
     def add_advance(self, player_name, base):
         """
         advance runners to a base
@@ -453,16 +441,7 @@ class GameState:
             self.runner_on_third = player_name
         logger.info("runners now 1st %s, 2nd %s, 3rd, %s" % (self.runner_on_first, self.runner_on_second, self.runner_on_third))
         if player_name == self.batter:
-            self._increment_batting_order()
-        
-    def add_out_description(self, text, location, tokens):
-        self.event_text = text #TODO: - not correct
-
-    def parse_defensive_sub(self, text, location, tokens):
-        new_player_name = ' '.join(tokens[constants.PARSING.NEW_PLAYER][1:])
-        replacing_name = ' '.join(tokens.get(constants.PARSING.REPLACING, []))
-        position = ' '.join(tokens.get(constants.PARSING.POSITION, []))
-        self.defensive_sub(new_player_name, replacing_name, position)        
+            self._increment_batting_order()  
         
     def defensive_sub(self, new_player_name, replacing_name, position=''):
         # "moves to" or "subs at" Case
@@ -500,11 +479,6 @@ class GameState:
                 #possible_remove_player.order = None
             self._current_fielding_lineup().add_player(new_player)
                 
-    def parse_offensive_sub(self, text, location, tokens):
-        new_player_name = ' '.join(tokens[constants.PARSING.NEW_PLAYER][1:])
-        replacing_name = ' '.join(tokens.get(constants.PARSING.REPLACING, []))
-        self.offensive_sub(new_player_name, replacing_name)
-        
     def offensive_sub(self, new_player_name, replacing_name):
         #TODO: this may not always be true
         self._next_batter_pinch = True
@@ -513,5 +487,3 @@ class GameState:
         new_player.position = removed_player.position
         new_player.order = removed_player.order  
         self._current_batting_lineup().add_player(new_player)
-        
-        
