@@ -33,15 +33,18 @@ POSITION_LOOKUP = {"P":"P",
                   "Catching": "C",
                   "Catcher": "C",
                   "First Base": "1B",
+                  "First Baseman": "1B",
                   "1B": "1B",
                   "1st Base": "1B",
                   "1st": "1B",
                   "2B": "2B",
                   "Second Base": "2B",
+                  "Second Baseman": "2B",
                   "2nd Base": "2B",
                   "2nd": "2B",
                   "3B": "3B",
                   "Third Base": "3B",
+                  "Third Baseman": "3B",
                   "3rd Base": "3B",
                   "3rd": "3B",
                   "SS": "SS",
@@ -71,15 +74,6 @@ BOTTOM = 1
 RIGHT = 'R'
 LEFT = 'L'
 
-
-
-CACHE_PATH = "../htmlcache/"
-GAME_CACHE_PATH = CACHE_PATH + "games/game_%s.html"
-GAME_XML_CACHE_PATH = CACHE_PATH + "games/game_%s_start.xml"
-GAME_XML_SEQ_CACHE_PATH = CACHE_PATH + "games/game_%s_seq_%s.xml"
-
-PLAYER_CACHE_PATH = CACHE_PATH + "players/player_%s.html"
-LISTINGS_CACHE_PATH = CACHE_PATH + "listings/list_%s.html" 
 
 
 #EVT_CODE_UNKNOWN_(OBSOLETE) = 0
@@ -113,3 +107,6 @@ class PARSING:
     NEW_PLAYER = "new player"
     REPLACING = "replacing"
     POSITION = "position"
+    PLAYER = "player"
+    DESCRIPTION = "description"
+    
