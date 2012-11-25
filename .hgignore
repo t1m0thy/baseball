@@ -1,0 +1,13 @@
+
+syntax: regexp
+^games$
+syntax: regexp
+^games$
+syntax: regexp
+^src/data\.sqlite$
+syntax: regexp
+^htmlcache$
+syntax: regexp
+^\.project$
+syntax: regexp
+^\.pydevproject$
