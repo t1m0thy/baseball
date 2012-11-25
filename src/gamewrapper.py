@@ -1,3 +1,5 @@
+import constants
+
 class GameWrapper:
     """
     GameWrap.  This class is a wrapper around the gamestate class.
@@ -27,20 +29,47 @@ class GameWrapper:
     def foul(self, *args):
         self._game.add_foul(*args)
     
-    def describe_out(self, *args):
-        self._game.add_out_description(*args)
-    
     def out(self, *args):
-        self._game.parse_out(*args)
+        self.parse_out(*args)
     
     def advance(self, *args):
-        self._game.parse_advance(*args)
+        self.parse_advance(*args)
     
     def score(self, *args):
-        self._game.parse_score(*args)
+        self.parse_score(*args)
     
     def defensive_sub(self, *args):
-        self._game.parse_defensive_sub(*args)
+        self.parse_defensive_sub(*args)
     
     def offensive_sub(self, *args):
-        self._game.parse_offensive_sub(*args)
+        self.parse_offensive_sub(*args)
+        
+        
+    def parse_offensive_sub(self, text, location, tokens):
+        new_player_name = ' '.join(tokens[constants.PARSING.NEW_PLAYER][1:])
+        replacing_name = ' '.join(tokens.get(constants.PARSING.REPLACING, []))
+        self._game.offensive_sub(new_player_name, replacing_name)        
+        
+    def parse_defensive_sub(self, text, location, tokens):
+        new_player_name = ' '.join(tokens[constants.PARSING.NEW_PLAYER][1:])
+        replacing_name = ' '.join(tokens.get(constants.PARSING.REPLACING, []))
+        position = ' '.join(tokens.get(constants.PARSING.POSITION, []))
+        self._game.defensive_sub(new_player_name, replacing_name, position)      
+        
+    def parse_advance(self, text, location, tokens):
+        tdict = tokens.asDict()
+        player_name = ' '.join(tdict[constants.PARSING.PLAYER][1:])
+        base = tdict["base"][0]
+        self._game.add_advance(player_name, base)
+        
+    def parse_out(self, text, location, tokens):
+        tdict = tokens.asDict()    
+        player_name = ' '.join(tdict[constants.PARSING.PLAYER][1:])
+        play = tdict[constants.PARSING.DESCRIPTION]
+        self._game.add_out(player_name, play)
+        
+    def parse_score(self, text, location, tokens):
+        tdict = tokens.asDict()
+        player_name = ' '.join(tdict[constants.PARSING.PLAYER][1:])
+        self._game.add_score(player_name)
+       
