@@ -1,4 +1,3 @@
-import sys
 import logging
 import webbrowser
 import pyparsing as pp
@@ -8,12 +7,14 @@ from sqlalchemy.orm import sessionmaker
 
 from models import event
 import pointstreakparser as psp
-import constants
+import pointstreakscraper as pss
 import gamestate    
 import setuplogger
+import scrapetools
 
 
 def init_database():
+    """ initialize database """
     #engine = create_engine('sqlite:///:memory:', echo=False)
     engine = create_engine('sqlite:///data.sqlite', echo=False)
     event.Base.metadata.create_all(engine) 
@@ -24,42 +25,48 @@ def init_database():
             
 
 if __name__ == "__main__":
-    
-    #    testgames = [110036,   
-    #                 109950,
-    #                 109678,
-    #                 109772,
-    #                 109776
-    #                 ]
-
     rootlogger = setuplogger.setupRootLogger(logging.WARN)
     logger = logging.getLogger("main")
-    playoff = psp.get_game_html(psp.PS_2012_CCL_PLAYOFF_URL, constants.LISTINGS_CACHE_PATH%"PS_CCL_PLAYOFF_2012")
 
+    #===============================================================================
+    # temporary code to grab all the CCL playoff game ids 
+    #===============================================================================
+    playoff = scrapetools.get_cached_url(pss.PS_2012_CCL_PLAYOFF_URL, pss.LISTINGS_CACHE_PATH%"PS_CCL_PLAYOFF_2012")
     playoff_soup = BeautifulSoup(playoff)
     links = playoff_soup.find_all("a")
     scores = [l for l in links if l.text == "final"]
     playoff_gameids = [s.attrs["href"].split('=')[1] for s in scores]
-
-    games = []
-    parser = psp.PointStreakParser()
     
+    
+    #===========================================================================
+    # instance parser, setup databse
+    #===========================================================================
+    games = []    
+    parser = psp.PointStreakParser()    
     session = init_database()
+
+    # track parsing success game ids   
+    success_games = []
+    failed_games = []
 
     for gameid in playoff_gameids:
         print gameid        
         try:
-
-            scraper = psp.PointStreakXMLScraper(gameid)
+            # init scraper for this game id
+            scraper = pss.PointStreakXMLScraper(gameid)
+            # create new game state
             game = gamestate.GameState()
             game.home_team_id = scraper.home_team()
             game.visiting_team = scraper.away_team()            
             game.game_id = gameid
 
+            # pass game to parser 
+            #TODO: the game wrapper for point streak should be instanced here...
+            # it might make sense to just instance a new parser for each game.
             parser.set_game(game)
                     
             #=======================================================================
-            # Parse Players and Stats
+            # Parse starting lineups and game rosters (any player to appear at all)
             #=======================================================================
     
             away_starting_lineup, home_starting_lineup = scraper.starting_lineups()
@@ -69,6 +76,7 @@ if __name__ == "__main__":
             away_roster, home_roster = scraper.game_rosters()
             game.set_away_roster(away_roster)
             game.set_home_roster(home_roster)
+
             #=======================================================================
             # Parse plays
             #=======================================================================
@@ -83,21 +91,22 @@ if __name__ == "__main__":
                         
                         session.add(game.copy_to_event_model())
                     except pp.ParseException, pe:
-                        rootlogger.error("%s: %s of inning %s\n%s" % (raw_event.title(), 
+                        logger.error("%s: %s of inning %s\n%s" % (raw_event.title(), 
                                                                       game.get_half_string(), 
                                                                       game.inning,
-                                                                      pe.markInputline())
-                                         )
-                        raise
-                    except Exception, e:
-                        rootlogger.error("Error %s in game %s: %s of inning %s from string: %s" % (str(e), game.game_id, game.get_half_string(), game.inning,raw_event.text()))
-                        raise
+                                                                      pe.markInputline()))
             session.commit()    
             games.append(game)
+            success_games.append(game.game_id)
         except Exception, e:
-            logger.exception("Error Scraping Game in %s of inning %s" % (game.get_half_string(), game.inning))
+            logger.exception("Error Parsing Game %s in %s of inning %s" % (game.game_id, game.get_half_string(), game.inning))
+            failed_games.append(game.game_id)
             if raw_input("show_problem_page?") == 'y':
                 webbrowser.open_new_tab(scraper.review_url())
-                raise
-            else:
-                sys.exit()
+
+    #===============================================================================
+    # Report Summary
+    #===============================================================================
+    print "PARSING COMPLETE"
+    print "Success count: {}".format(len(success_games))
+    print "Fail count: {}".format(len(failed_games))
