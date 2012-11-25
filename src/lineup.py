@@ -1,4 +1,4 @@
-from constants import POSITIONS, DH, P
+from constants import POSITIONS, DH, P, POSITION_LOOKUP
 
 class Player:
     def __init__(self, name, number, order, position, hand, iddict={}):
@@ -8,48 +8,70 @@ class Player:
             self.order = int(order)
         except TypeError:
             self.order = None
-        self.position = position
+        self.position = self._verified_position(position)
         self.hand = hand
         self.iddict = iddict
-
+        self.atbats = 0
+        
+    def _verified_position(self, position):
+        if position is not None:
+            return POSITION_LOOKUP[position]
+        else:
+            return None
+        
     def __eq__(self, other):
         return self.name == other.name and self.number == other.number
     
     def __str__(self):
         return "%2s %3s %s %3s %2s" % (self.order, self.number, self.name.ljust(18), self.position, self.hand)
 
-class PlayerError(BaseException): pass
-    
-
-class Lineup(object):
+    def set_position(self, position):
+        self.position = self._verified_position(position)
+        
+class PlayerList(list):
     """
     maintain one team's line up or 9 or 10 players
     """
     def __init__(self):
-        self.players = []
+        list.__init__(self)
         
-    def add_player(self, name, number, order, position, hand, iddict={}):
-        p = Player(name, number, order, position, hand, iddict={})
-        if p not in self.players:
-            self.players.append(p)
-            
+    def add_player(self, player):
+        """add_player if not already in lineup"""
+        if player not in self:
+            self.append(player)
+#        else:
+#            raise StandardError("%s already in lineup" % name)        
+    
+    def find_player_by_name(self, name):
+        for p in self:
+            if p.name == name:
+                return p
+        raise KeyError("No player found with name %s" % name)
+    
+    def set_player_position(self, name, position):
+        self.find_player_by_name(name).set_position(position)
+        
+    def __str__(self):
+        tmp = self
+        def ordercmp(x,y):
+            return cmp(x.order, y.order)
+        tmp.sort(cmp=ordercmp)
+        out = "\n".join([str(p) for p in tmp])
+        return out
+class Lineup(PlayerList):    
     def move_player(self, name, new_position):
-        """
-        move player from old position to new.
-        """
+        """ move player from old position to new."""
         self.find_player_by_name(name).position  = new_position
     
     def remove_player(self, name):
+        """remove player with name from lineup 
+        
+        returns removed player
         """
-        remove player from lineup
-        """        
-        success = False
-        for p in self.players:
-            if p.name == name:
-                del(p)
-                success = True
-        return success
-
+        p = self.find_player_by_name(name)
+        self.remove(p)
+        return p
+        
     
     def is_complete(self, raise_reason = False):
         """
@@ -58,7 +80,7 @@ class Lineup(object):
         """
         try:
             self.find_player_by_position(DH)
-            if len(self.players) > 10:
+            if len(self) > 10:
                 if raise_reason:
                     raise StandardError("Over 10 players in the lineup")
                 return False
@@ -74,7 +96,7 @@ class Lineup(object):
                     raise StandardError("No DH in and no pitcher")
                 return False
                 
-            if len(self.players) > 9:
+            if len(self) > 9:
                 if raise_reason:
                     raise StandardError("Over 9 in lineup with no DH")
                 return False
@@ -105,29 +127,23 @@ class Lineup(object):
         position - one of the position codes "P", "C", "1B", etc
                     or the position number (1: pitcher, 2: catcher, etc)
         """
-        for p in self.players:
+        position = POSITION_LOOKUP[position]
+        for p in self:
             if p.position == position:
                 return p
         raise KeyError("No player found at position %s" % position)
-
-    def find_player_by_name(self, name):
-        for p in self.players:
-            if p.name == name:
-                return p
-        raise KeyError("No player found with name %s" % name)
-
     
     def find_player_by_order(self, order):
         """
         retrieve player with their batting order
         """
-        for p in self.players:
+        for p in self:
             if p.order == order:
                 return p
         raise KeyError("No player found at order number %s" % order)
 
     def position_dict(self):
-        return dict([(p.position, p.name) for p in self.players])
+        return dict([(p.position, p.name) for p in self])
     
     def has_position(self, position):
         try:
@@ -136,10 +152,3 @@ class Lineup(object):
         except KeyError:
             return False
         
-    def __str__(self):
-        tmp = self.players
-        def ordercmp(x,y):
-            return cmp(x.order, y.order)
-        tmp.sort(cmp=ordercmp)
-        out = "\n".join([str(p) for p in tmp])
-        return out
