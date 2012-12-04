@@ -91,18 +91,22 @@ if __name__ == "__main__":
                         
                         session.add(game.copy_to_event_model())
                     except pp.ParseException, pe:
-                        logger.error("%s: %s of inning %s\n%s" % (raw_event.title(), 
+                        logger.critical("%s: %s of inning %s\n%s" % (raw_event.title(), 
                                                                       game.get_half_string(), 
                                                                       game.inning,
                                                                       pe.markInputline()))
+                        raise
+                    except:
+                        raise# StandardError("Error with event: {}".format(raw_event.text()))
             session.commit()    
             games.append(game)
             success_games.append(game.game_id)
         except Exception, e:
-            logger.exception("Error Parsing Game %s in %s of inning %s" % (game.game_id, game.get_half_string(), game.inning))
+            logger.exception("Error in Game %s in %s of inning %s" % (game.game_id, game.get_half_string(), game.inning))
             failed_games.append(game.game_id)
             if raw_input("show_problem_page?") == 'y':
                 webbrowser.open_new_tab(scraper.review_url())
+            raise
 
     #===============================================================================
     # Report Summary

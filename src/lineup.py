@@ -12,6 +12,8 @@ class Player:
         self.hand = hand
         self.iddict = iddict
         self.atbats = 0
+        #TODO: add throwing hand vs. batting hand
+        #TODO: add switch_hitter flag
         
     def _verified_position(self, position):
         if position is not None:
@@ -58,6 +60,7 @@ class PlayerList(list):
         tmp.sort(cmp=ordercmp)
         out = "\n".join([str(p) for p in tmp])
         return out
+    
 class Lineup(PlayerList):    
     def move_player(self, name, new_position):
         """ move player from old position to new."""
@@ -85,7 +88,7 @@ class Lineup(PlayerList):
                     raise StandardError("Over 10 players in the lineup")
                 return False
         except KeyError:
-            # no DH, so there shoudl be a pitcher in the order
+            # no DH, so there should be a pitcher in the order
             try:
                 if self.find_player_by_position(P).order == None:
                     if raise_reason:

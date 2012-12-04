@@ -52,12 +52,15 @@ POSITION_LOOKUP = {"P":"P",
                   "Short": "SS",
                   "LF": "LF",
                   "Left Field": "LF",
+                  "Left Fielder": "LF",
                   "Left": "LF",
                   "CF": "CF",
                   "Center Field": "CF",
+                  "Center Fielder": "CF",                  
                   "Center": "CF",
                   "RF": "RF",
                   "Right Field": "RF",
+                  "Right Fielder": "RF",
                   "Right": "RF",
                   "DH": "DH",
                   "Designated Hitter": "DH",
@@ -68,6 +71,26 @@ POSITIONS = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"]
 DH = "DH"
 P = "P"
 
+POSITION_CODES = {"DH":10,
+                  "PH":11,
+                  "PR":12}
+
+BASE_LOOKUP = {1:1,
+               "1st base":1,
+               "1st":1,
+               "first":1,
+               "first base":1,
+               2:2,
+               "2nd base":2,
+               "2nd":2,
+               "second":2,
+               "second base":2,
+               3:3,
+               "3rd base":3,
+               "3rd":3,
+               "third":3,
+               "third base":3,
+               }
 TOP = 0
 BOTTOM = 1  
 
@@ -102,6 +125,31 @@ EVT_CODE_TRIPLE = 22
 EVT_CODE_HOME_RUN = 23
 #EVT_CODE_MISSING_PLAY_(OBSOLETE) = 24
 
+class PARSING_OUTS:
+    DOUBLE_PLAY = "double play"
+    TRIPLE_PLAY = "double play"
+    FLY_OUT = "fly out"
+    STRIKE_OUT = "strike out"
+    SACRIFICE = "sacrifice"
+    THROWN_OUT = "thrown out"
+    PICK_OFF = "pick off"
+    DROPPED_THIRD = "dropped third"
+    CAUGHT_STEALING = "caught stealing"
+    SWINGING = "swinging"
+    UNASSISTED = "unassisted"
+    LINE_DRIVE = "L"
+    POPUP = "P"
+    FOUL = "F"
+    OUT_COUNT = "out count"
+    
+class PARSING_PLAYER:
+    NAME = "name"
+    NUMBER = "number"
+    
+class PARSE_PITCHING:
+    THROW_POSITION = "thrower"
+    CATCH_POSITION = "pick catcher"
+    
 class PARSING:
     # TODO: fill out the rest of this class of parser token constants
     NEW_PLAYER = "new player"
@@ -109,4 +157,20 @@ class PARSING:
     POSITION = "position"
     PLAYER = "player"
     DESCRIPTION = "description"
-    
+    BASE = "base"
+    LOCATION = "location"
+    UNKNOWN = "unknown"
+
+class PARSE_ADVANCE:
+    INTENTIONAL_WALK = "intentional walk"
+    PASS_BALL = "pass ball"
+    GROUND_RULE = "ground rule"
+    THROW = "throw"
+    ERROR = "error"
+    WILD_PITCH = "wild pitch"
+    PLAYER_NUM = "player num"
+    SINGLE = "single"
+    DOUBLE = "double"
+    TRIPLE = "triple"
+    FIELDERS_CHOICE = "fielders choice"
+    HIT_BY_PITCH = "hit by pitch"
