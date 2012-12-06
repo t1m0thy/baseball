@@ -36,13 +36,19 @@ class GameWrapper:
     def ball(self, *args):
         self._game.pitch_ball(*args)
 
-    def foul(self, *args):
-        self._game.pitch_foul(*args)
+    def dropped_foul(self, text, location, tokens):
+        error = tokens.get(constants.PARSING.ERROR, None)
+        error_position = tokens.get(constants.PARSING.POSITION, None)
+        self._game.pitch_foul(True, error, error_position)
     
-    def put_out(self,  text, location, tokens):
+    def foul(self,  text, location, tokens):
+        self._game.pitch_foul()
+    
+    def put_out(self, text, location, tokens):
         player_name = ' '.join(tokens[constants.PARSING.PLAYER][constants.PARSING_PLAYER.NAME])
         #print "PUTOUT", player_name
         description = tokens[constants.PARSING.DESCRIPTION]
+        position = description.get(constants.PARSING.POSITION)
         logger.info(text)
         if constants.PARSING_OUTS.THROWN_OUT in description:
             self._game.out_thrown_out(player_name, 
@@ -53,7 +59,7 @@ class GameWrapper:
                                       )
         elif constants.PARSING_OUTS.FLY_OUT in description:
             self._game.out_fly_out(player_name, 
-                                   description[constants.PARSING.POSITION],
+                                   position,
                                    constants.PARSING_OUTS.SACRIFICE in description)
         elif constants.PARSING_OUTS.STRIKE_OUT in description:
             self._game.out_strike_out(player_name,
@@ -62,13 +68,13 @@ class GameWrapper:
             self._game.out_caught_stealing(player_name, tokens)
         elif constants.PARSING_OUTS.UNASSISTED in description or constants.PARSING_OUTS.LINE_DRIVE in description:
             self._game.out_unassisted(player_name, 
-                                      description[constants.PARSING.POSITION],
+                                      position,
                                       constants.PARSING_OUTS.FOUL in description)
         elif constants.PARSING_OUTS.POPUP in description:
             logger.info("POPUP")
             self._game.out_popup(player_name, 
-                                      description[constants.PARSING.POSITION],
-                                      constants.PARSING_OUTS.FOUL in description)
+                                 position,
+                                 constants.PARSING_OUTS.FOUL in description)
         else:
             raise StandardError("Parsing Error from unknown putout description: " + ' '.join(tokens))
         
@@ -106,11 +112,33 @@ class GameWrapper:
         elif constants.PARSE_ADVANCE.PASS_BALL in description:
             self._game.advance_on_passed_ball(player_name, base)
         elif constants.PARSE_ADVANCE.THROW in description:
-            throw = description[constants.PARSE_ADVANCE.THROW]
-            self._game.advance_on_hit(player_name, base, throw)
+            self._game.advance_on_throw(player_name, base)
+        elif constants.PARSE_ADVANCE.SINGLE in description:
+            self._game.hit_single(player_name)
+        elif constants.PARSE_ADVANCE.DOUBLE in description:
+            self._game.hit_double(player_name)
+        elif constants.PARSE_ADVANCE.TRIPLE in description:
+            self._game.hit_triple(player_name)
+        elif constants.PARSING.ERROR in description:
+            self._game.advance_on_error(player_name, 
+                                        base, 
+                                        description[constants.PARSING.POSITION],
+                                        description.get(constants.PARSING.ERROR_TYPE, None))
+        elif constants.PARSE_ADVANCE.FIELDERS_CHOICE in description:
+            self._game.advance_on_fielders_choice(player_name, base)
+        elif constants.PARSE_ADVANCE.GROUND_RULE:
+            self._game.advance_on_ground_rule(player_name, base)
+        elif constants.PARSE_ADVANCE.HIT_BY_PITCH in description:
+            self._game.advance_on_hit_by_pitch(player_name)
+        elif constants.PARSE_ADVANCE.INTENTIONAL_WALK in description:
+            self._game.advance_on_walk(player_name, intentional=True)
+        elif constants.PARSE_ADVANCE.WALK in description:
+            self._game.advance_on_walk(player_name, intentional=False)            
+        elif constants.PARSE_ADVANCE.PLAYER_NUM:
+            batter_number = description.get(constants.PARSE_ADVANCE.PLAYER_NUM, None)
+            self._game.advance_from_batter(player_name, base, batter_number)
         else:
             self._game._advance_player(player_name, base)
-        
         
     def parse_score(self, text, location, tokens):
         tdict = tokens.asDict()

@@ -103,6 +103,7 @@ if __name__ == "__main__":
             success_games.append(game.game_id)
         except Exception, e:
             logger.exception("Error in Game %s in %s of inning %s" % (game.game_id, game.get_half_string(), game.inning))
+            logger.error("possible source: {}".format(raw_event.text()))
             failed_games.append(game.game_id)
             if raw_input("show_problem_page?") == 'y':
                 webbrowser.open_new_tab(scraper.review_url())

@@ -2,7 +2,7 @@ import mechanize
 import os
 import logging
 
-logger = logging.getLogger("scraptools")
+logger = logging.getLogger("scrapetools")
 
 def get_cached_url(url, cache_filename=None, force_reload=False):      
     if force_reload or cache_filename is None or not os.path.isfile(cache_filename):

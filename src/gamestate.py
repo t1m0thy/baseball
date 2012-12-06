@@ -76,9 +76,9 @@ class GameState:
         
         self.fielded_by = None
         self.batted_ball_type = None
-        self.bunt_flag = False
+        self.bunt_flag = False  #TODO: getting this with point streak?
         self.foul_flag = False
-        self.hit_location = None
+        self.hit_location = 0
         self.number_of_errors = 0
         self.first_error_player = None
         self.first_error_type = None
@@ -335,6 +335,10 @@ class GameState:
         self.wild_pitch_flag = False
         self.passed_ball_flag = False
         self.fielded_by = 0
+        self.bunt_flag = False
+        self.foul_flag = False
+        self.hit_location = 0
+        self.number_of_errors = 0
         logger.info("-> %s to bat" % batter)
 
         # If this the first batter in a new half, swap the lineups
@@ -414,6 +418,23 @@ class GameState:
         logger.info("--------- {half} of the {inning}".format(inning=self.inning, half=self.get_half_string()))
 
     #------------------------------------------------------------------------------ 
+    # PLAY ERRORS
+    #------------------------------------------------------------------------------ 
+
+    def error(self, error_position, error_type):
+        self.number_of_errors += 1
+        if self.number_of_errors == 1:
+            self.first_error_player = error_position
+            self.first_error_type = error_type
+        elif self.number_of_errors == 2:
+            self.second_error_player = error_position
+            self.second_error_type = error_type
+        elif self.number_of_errors == 3:
+            self.third_error_player = error_position
+            self.third_error_type = error_type
+            
+
+    #------------------------------------------------------------------------------ 
     #  PITCHES
     #------------------------------------------------------------------------------ 
 
@@ -432,10 +453,12 @@ class GameState:
         self.pitch_sequence += constants.SWINGING_STRIKE
         logger.debug("Swinging Strike")
 
-    def pitch_foul(self):
+    def pitch_foul(self, dropped=False, error=None, error_position=0):
         if self.strikes < 2:
             self.strikes += 1
         self.pitch_sequence += constants.FOUL
+        if dropped and (error is not None):
+            self.error(error_position, 'F')
         logger.debug("Foul")
         
     def pitch_pickoff_attempt(self, base, thrower_position, catcher_position):
@@ -473,6 +496,7 @@ class GameState:
         self.double_play_flag = double_play
         self.triple_play_flag = triple_play
         logger.info("Fielders {}".format(fielders))
+        self.fielded_by = fielders[0]
         self._out(player_name)
         
     def out_caught_stealing(self, runner_name, fielders):
@@ -484,9 +508,17 @@ class GameState:
     def out_dropped_third_strike(self, fielders):
         self._out(self.batter)
         
-    def out_fly_out(self, player_name, fielding_position, sacrifice=False):
+    def lookup_position(self, pos):
+        return constants.POSITION_LOOKUP[pos.lower()]
+
+    def lookup_position_num(self, pos):
+        return constants.POSITION_CODES[self.lookup_position(pos)]
+    
+    def out_fly_out(self, player_name, fielder_position, sacrifice=False):
         assert(player_name == self.batter)
         self.sacrifice_fly_flag = sacrifice
+        fielder_position = self.lookup_position_num(fielder_position)
+        self.fielded_by = fielder_position
         self._out(self.batter)
          
     def out_strike_out(self, player_name, swinging=False):
@@ -498,11 +530,17 @@ class GameState:
     def out_unassisted(self, player_name, fielder_position, foul=False, double_play = False):
         self._out(player_name)
         self.double_play_flag = double_play
+        self.foul_flag = foul
+        fielder_position = self.lookup_position_num(fielder_position)
+        self.fielded_by = fielder_position
         logger.debug("Unassisted out for {outs} outs".format(outs=self.outs))
         
     def out_popup(self, player_name, fielder_position, foul=False, sacrifice=False):
         assert(player_name == self.batter)
+        self.foul_flag = foul
         self._out(self.batter)
+        fielder_position = self.lookup_position_num(fielder_position)
+        self.fielded_by = fielder_position
         logger.debug("Unassisted out for {outs} outs".format(outs=self.outs))
 
     #------------------------------------------------------------------------------ 
@@ -529,11 +567,44 @@ class GameState:
         self.wild_pitch_flag = True
         self._advance_player(player_name, base)
     
-    def advance_on_passed_ball(self,  player_name, base):
+    def advance_on_passed_ball(self, player_name, base):
         self.passed_ball_flag = True
         self._advance_player(player_name, base)
     
-    
+    def advance_on_throw(self, player_name, base):
+        self._advance_player(player_name, base)
+
+    def hit_single(self, player_name):
+        assert(self.batter == player_name)
+        self._advance_player(player_name, 1)
+        
+    def hit_double(self, player_name):
+        assert(self.batter == player_name)
+        self._advance_player(player_name, 2)
+
+    def hit_triple(self, player_name):
+        assert(self.batter == player_name)
+        self._advance_player(player_name, 3)        
+
+    def advance_on_error(self, player_name, base, error_position, error_type):
+        self.error(error_position, error_type)        
+        self._advance_player(player_name, base)
+        
+    def advance_on_fielders_choice(self, player_name, base):
+        self._advance_player(player_name, base)
+        
+    def advance_on_ground_rule(self, player_name, base):
+        self._advance_player(player_name, base)
+        
+    def advance_on_hit_by_pitch(self, player_name):
+        self._advance_player(player_name, 1)
+        
+    def advance_on_walk(self, player_name, intentional=False):
+        self._advance_player(player_name, 1)
+        
+    def advance_from_batter(self, player_name, base, batter_number):
+        self._advance_player(player_name, base)
+        
     def _advance_player(self, player_name, base):
         """
         advance runners to a base
@@ -559,6 +630,10 @@ class GameState:
         if player_name == self.batter:
             self._increment_batting_order()  
             self.hit_value = base_num
+
+    #------------------------------------------------------------------------------ 
+    # SUBSTITUTIONS
+    #------------------------------------------------------------------------------ 
 
     def defensive_sub(self, new_player_name, replacing_name, position=''):
         # "moves to" or "subs at" Case

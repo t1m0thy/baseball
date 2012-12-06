@@ -17,7 +17,7 @@ class Player:
         
     def _verified_position(self, position):
         if position is not None:
-            return POSITION_LOOKUP[position]
+            return POSITION_LOOKUP[position.lower()]
         else:
             return None
         
@@ -130,7 +130,7 @@ class Lineup(PlayerList):
         position - one of the position codes "P", "C", "1B", etc
                     or the position number (1: pitcher, 2: catcher, etc)
         """
-        position = POSITION_LOOKUP[position]
+        position = POSITION_LOOKUP[position.lower()]
         for p in self:
             if p.position == position:
                 return p

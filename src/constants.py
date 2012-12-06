@@ -25,53 +25,89 @@ CALLED_BALL_BECAUSE_PITCHER_WENT_TO_HIS_MOUTH = 'V'
 BALL_PUT_INTO_PLAY_BY_BATTER = 'X'
 BALL_PUT_INTO_PLAY_ON_PITCHOUT = 'Y'
 
-POSITION_LOOKUP = {"P":"P",
-                   "PR": "P",
-                   "Pitching": "P", 
-                  "Pitcher": "P",
-                  "C":"C",
-                  "Catching": "C",
-                  "Catcher": "C",
-                  "First Base": "1B",
-                  "First Baseman": "1B",
-                  "1B": "1B",
-                  "1st Base": "1B",
+POSITION_LOOKUP = {"p":"P",
+                   "pr": "P",
+                   "pitching": "P", 
+                  "pitcher": "P",
+                  1:"P",
+                  '1':"P",
+                  "c":"C",
+                  "catching": "C",
+                  "catcher": "C",
+                  2:"C",
+                  '2':"C",
+                  "first base": "1B",
+                  "first baseman": "1B",
+                  "1b": "1B",
+                  "1st base": "1B",
                   "1st": "1B",
-                  "2B": "2B",
-                  "Second Base": "2B",
-                  "Second Baseman": "2B",
-                  "2nd Base": "2B",
+                  3: "1B",
+                  '3': "1B",
+                  "2b": "2B",
+                  "second base": "2B",
+                  "second baseman": "2B",
+                  "2nd base": "2B",
                   "2nd": "2B",
-                  "3B": "3B",
-                  "Third Base": "3B",
-                  "Third Baseman": "3B",
-                  "3rd Base": "3B",
+                  4: "2B",
+                  '4': "2B",
+                  "3b": "3B",
+                  "third base": "3B",
+                  "third baseman": "3B",
+                  "3rd base": "3B",
                   "3rd": "3B",
-                  "SS": "SS",
-                  "Short Stop": "SS",
-                  "Short": "SS",
-                  "LF": "LF",
-                  "Left Field": "LF",
-                  "Left Fielder": "LF",
-                  "Left": "LF",
-                  "CF": "CF",
-                  "Center Field": "CF",
-                  "Center Fielder": "CF",                  
-                  "Center": "CF",
-                  "RF": "RF",
-                  "Right Field": "RF",
-                  "Right Fielder": "RF",
-                  "Right": "RF",
-                  "DH": "DH",
-                  "Designated Hitter": "DH",
-                  "Pinch Hitter": "PH",
-                  "PH": "PH"
+                  5: "3B",
+                  '5': "3B",
+                  "ss": "SS",
+                  "short stop": "SS",
+                  "shortstop": "SS",
+                  "short": "SS",
+                  6: "SS",
+                  '6': "SS",
+                  "lf": "LF",
+                  "left field": "LF",
+                  "left fielder": "LF",
+                  "left": "LF",
+                  7: "LF",
+                  '7': "LF",
+                  "cf": "CF",
+                  "center field": "CF",
+                  "center fielder": "CF",                  
+                  "center": "CF",
+                  8: "CF",
+                  '8': "CF",
+                  "rf": "RF",
+                  "right field": "RF",
+                  "right fielder": "RF",
+                  "right": "RF",
+                  9: "RF",
+                  '9': "RF",
+                  "dh": "DH",
+                  "designated hitter": "DH",
+                  10: "DH",
+                  '10': "DH",
+                  "pinch hitter": "PH",
+                  "ph": "PH",
+                  11: "PH",
+                  '11': "PH",
+                  "pinch runner": "PR",
+                  "pr": "PR",
+                  12: "PR",
+                  '12': "PR"
                   }
 POSITIONS = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"]
 DH = "DH"
 P = "P"
 
-POSITION_CODES = {"DH":10,
+POSITION_CODES = {"P":1, 
+                  "C":2, 
+                  "1B":3, 
+                  "2B":4, 
+                  "3B":5, 
+                  "SS":6, 
+                  "LF":7, 
+                  "CF":8, 
+                  "RF":9,                  
+                  "DH":10,
                   "PH":11,
                   "PR":12}
 
@@ -152,25 +188,28 @@ class PARSE_PITCHING:
     
 class PARSING:
     # TODO: fill out the rest of this class of parser token constants
-    NEW_PLAYER = "new player"
-    REPLACING = "replacing"
-    POSITION = "position"
-    PLAYER = "player"
-    DESCRIPTION = "description"
     BASE = "base"
+    DESCRIPTION = "description"
+    ERROR = "error"
+    ERROR_TYPE = "error type"
     LOCATION = "location"
+    NEW_PLAYER = "new player"
+    PLAYER = "player"
+    POSITION = "position"
+    REPLACING = "replacing"
     UNKNOWN = "unknown"
 
 class PARSE_ADVANCE:
+    DOUBLE = "double"
+    FIELDERS_CHOICE = "fielders choice"
+    GROUND_RULE = "ground rule"
+    HIT_BY_PITCH = "hit by pitch"
     INTENTIONAL_WALK = "intentional walk"
     PASS_BALL = "pass ball"
-    GROUND_RULE = "ground rule"
-    THROW = "throw"
-    ERROR = "error"
-    WILD_PITCH = "wild pitch"
     PLAYER_NUM = "player num"
     SINGLE = "single"
-    DOUBLE = "double"
+    STOLEN_BASE = "stolen base"
+    THROW = "throw"
     TRIPLE = "triple"
-    FIELDERS_CHOICE = "fielders choice"
-    HIT_BY_PITCH = "hit by pitch"
+    WALK = "walk"
+    WILD_PITCH = "wild pitch"
