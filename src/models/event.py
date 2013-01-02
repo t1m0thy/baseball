@@ -6,7 +6,7 @@ Base = declarative_base()
 class Event(Base):
     __tablename__ = 'events'
     
-    EVENT_ID = Column(Integer, primary_key=True)
+    ID = Column(Integer, primary_key=True)
 
     GAME_ID = Column(String)
     AWAY_TEAM_ID = Column(String)
@@ -104,6 +104,7 @@ class Event(Base):
     ASS3_FLD_CD = Column(Integer)
     ASS4_FLD_CD = Column(Integer)
     ASS5_FLD_CD = Column(Integer)
+    EVENT_ID = Column(Integer)
 
     HOME_TEAM_ID = Column(String)
     BAT_TEAM_ID = Column(String)

@@ -65,7 +65,8 @@ class GameWrapper:
             self._game.out_strike_out(player_name,
                                       constants.PARSING_OUTS.SWINGING in description)
         elif constants.PARSING_OUTS.CAUGHT_STEALING in description:
-            self._game.out_caught_stealing(player_name, tokens)
+            self._game.out_caught_stealing(player_name, tokens,
+                                           constants.PARSING_OUTS.DOUBLE_PLAY in description)
         elif constants.PARSING_OUTS.UNASSISTED in description or constants.PARSING_OUTS.LINE_DRIVE in description:
             self._game.out_unassisted(player_name, 
                                       position,
@@ -77,19 +78,15 @@ class GameWrapper:
                                  constants.PARSING_OUTS.FOUL in description)
         else:
             raise StandardError("Parsing Error from unknown putout description: " + ' '.join(tokens))
-
-    
-    def defensive_sub(self, *args):
-        self.parse_defensive_sub(*args)
-    
-    def offensive_sub(self, *args):
-        self.parse_offensive_sub(*args)
-        
         
     def parse_offensive_sub(self, text, location, tokens):
         new_player_name = ' '.join(tokens[constants.PARSING.NEW_PLAYER][1:])
         replacing_name = ' '.join(tokens.get(constants.PARSING.REPLACING, []))
-        self._game.offensive_sub(new_player_name, replacing_name)        
+
+        if constants.PARSING.BASE in tokens.asDict():
+            self._game.offensive_sub(new_player_name, replacing_name, pinch_runner=True, base=tokens[constants.PARSING.BASE])
+        else:
+            self._game.offensive_sub(new_player_name, replacing_name)     
         
     def parse_defensive_sub(self, text, location, tokens):
         new_player_name = ' '.join(tokens[constants.PARSING.NEW_PLAYER][1:])
@@ -113,7 +110,9 @@ class GameWrapper:
         self._advance(player_name, base, description, earned)
        
     def _advance(self, player_name, base, description,earned=True):
-        if constants.PARSE_ADVANCE.WILD_PITCH in description:
+        if constants.PARSE_ADVANCE.STOLEN_BASE in description:
+            self._game.advance_on_stolen_base(player_name, base)
+        elif constants.PARSE_ADVANCE.WILD_PITCH in description:
             self._game.advance_on_wild_pitch(player_name, base)
         elif constants.PARSE_ADVANCE.PASS_BALL in description:
             self._game.advance_on_passed_ball(player_name, base)
@@ -134,7 +133,7 @@ class GameWrapper:
                                         description.get(constants.PARSING.ERROR_TYPE, None))
         elif constants.PARSE_ADVANCE.FIELDERS_CHOICE in description:
             self._game.advance_on_fielders_choice(player_name, base)
-        elif constants.PARSE_ADVANCE.GROUND_RULE:
+        elif constants.PARSE_ADVANCE.GROUND_RULE in description:
             self._game.advance_on_ground_rule(player_name, base)
         elif constants.PARSE_ADVANCE.HIT_BY_PITCH in description:
             self._game.advance_on_hit_by_pitch(player_name)
@@ -142,9 +141,16 @@ class GameWrapper:
             self._game.advance_on_walk(player_name, intentional=True)
         elif constants.PARSE_ADVANCE.WALK in description:
             self._game.advance_on_walk(player_name, intentional=False)            
-        elif constants.PARSE_ADVANCE.PLAYER_NUM:
+        elif constants.PARSE_ADVANCE.PLAYER_NUM in description: 
             batter_number = description.get(constants.PARSE_ADVANCE.PLAYER_NUM, None)
             self._game.advance_from_batter(player_name, base, batter_number)
         else:
+            logger.error("Unknown Description" + str(description))
             self._game._advance_player(player_name, base, earned)
+
+    
+    def event_complete(self, *args):
+        self._game.send_event_to_database()
+    
+    
 

@@ -14,8 +14,10 @@ class PointStreakParser:
     def __init__(self, game=None):
         self.gamewrap = GameWrapper(game)
         self.setup_parser()
+        self.event_cache = []
         
     def set_game(self, game):
+        self.event_cache = []
         self.gamewrap.set_game(game)
         
     def setup_parser(self):
@@ -23,15 +25,11 @@ class PointStreakParser:
         # General Parser Items
         #===========================================================================
     
-        #TODO: use constants to all arguments passed to setResultsName
-        #comma = pp.Literal(',').suppress()
         dash = pp.Literal('-').suppress()
         left_paren = pp.Literal('(').suppress()
         right_paren = pp.Literal(')').suppress()
         period = pp.Literal('.').suppress()
     
-        paranthetical = left_paren + pp.OneOrMore(pp.Word(pp.alphanums+"'")) + right_paren  # single quote in words for "fielder's choice"
-        #player_no_num = pp.Word(pp.alphas+'.').setResultsName("first") + (pp.Optional(pp.Keyword('St.')) + pp.Word(pp.alphas)).setResultsName("last")
         player_no_num = pp.Word(pp.alphas+'.') + (pp.Optional(pp.Keyword('St.')) + pp.Word(pp.alphas))
         player = (pp.Word(pp.nums).setResultsName(constants.PARSING_PLAYER.NUMBER) + player_no_num.setResultsName(constants.PARSING_PLAYER.NAME)).setResultsName(constants.PARSING.PLAYER)
         
@@ -120,7 +118,7 @@ class PointStreakParser:
         #===============================================================================
         # Advancing
         #===============================================================================
-        base = pp.OneOrMore(pp.Word(pp.alphanums)).setResultsName("base")
+        base = pp.OneOrMore(pp.Word(pp.alphanums)).setResultsName(constants.PARSING.BASE)
         hit_location = (pp.Keyword("to") + 
                         pp.Optional(pp.Keyword("the")) + 
                         location.setResultsName(constants.PARSING.LOCATION)
@@ -185,37 +183,38 @@ class PointStreakParser:
         #===========================================================================
         # SUBS
         #===========================================================================
-        replacing = player_no_num.setResultsName("replacing")
-        new_player = player.setResultsName("new player")
+        replacing = player_no_num.setResultsName(constants.PARSING.REPLACING)
+        new_player = player.setResultsName(constants.PARSING.NEW_PLAYER)
         position = pp.OneOrMore(pp.Word(pp.alphanums))
         defensive_sub = pp.Keyword("Defensive Substitution.") + new_player + \
                         ((pp.Keyword("subs for") + replacing + pp.Keyword("at")) | \
                         (pp.Keyword("moves to")|pp.Keyword("subs at"))) + \
-                        position.setResultsName("position") + period
-        defensive_sub.setParseAction(self.gamewrap.defensive_sub)
+                        position.setResultsName(constants.PARSING.POSITION) + period
+        defensive_sub.setParseAction(self.gamewrap.parse_defensive_sub)
         dh_sub = pp.Keyword("Defensive Substitution.") + new_player + \
                  pp.Keyword("subs for") + replacing + period
-        dh_sub.setParseAction(self.gamewrap.defensive_sub)
+        dh_sub.setParseAction(self.gamewrap.parse_defensive_sub)
 
         pitching_sub = pp.Keyword("Pitching Substitution.") + new_player + \
                        pp.Keyword("subs for") + replacing + period
-        pitching_sub.setParseAction(self.gamewrap.defensive_sub)
+        pitching_sub.setParseAction(self.gamewrap.parse_defensive_sub)
 
         offensive_sub = pp.Keyword("Offensive Substitution.") + new_player + \
                         pp.Keyword("subs for") + replacing + period
-        offensive_sub.setParseAction(self.gamewrap.offensive_sub)
+        offensive_sub.setParseAction(self.gamewrap.parse_offensive_sub)
         runner_sub = pp.Keyword("Offensive Substitution.") + new_player + \
                      pp.Keyword("runs for") + replacing + pp.Keyword("at") + \
-                     pp.Word(pp.alphanums).setResultsName("base") + pp.Word(pp.alphanums)  + period
-        runner_sub.setParseAction(self.gamewrap.offensive_sub)
+                     pp.Word(pp.alphanums).setResultsName(constants.PARSING.BASE) + pp.Word(pp.alphanums)  + period
+        runner_sub.setParseAction(self.gamewrap.parse_offensive_sub)
         
         subs = defensive_sub | dh_sub | pitching_sub | offensive_sub | runner_sub
         #===========================================================================
         # Summary 
         #===========================================================================
-        self.event_parser = pp.delimitedList(subs | pitches | advances | putout | scores) + pp.StringEnd()
+        self.event_parser = (subs + pp.StringEnd()) | (pp.delimitedList(pitches | advances | putout | scores) + pp.StringEnd().setParseAction(self.gamewrap.event_complete))
         
     def parse_event(self, text):
         self.last_event_text = text
+        self.event_cache.append(text)
         self.event_parser.parseString(text)
         return self.gamewrap._game

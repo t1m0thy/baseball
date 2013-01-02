@@ -57,8 +57,10 @@ if __name__ == "__main__":
             # create new game state
             game = gamestate.GameState()
             game.home_team_id = scraper.home_team()
-            game.visiting_team = scraper.away_team()            
+            game.visiting_team = scraper.away_team()
             game.game_id = gameid
+            
+            game.set_database_session(session)
 
             # pass game to parser 
             #TODO: the game wrapper for point streak should be instanced here...
@@ -88,8 +90,6 @@ if __name__ == "__main__":
                         if not raw_event.is_sub():
                             game.new_batter(raw_event.batter())
                         parser.parse_event(raw_event.text())
-                        
-                        session.add(game.copy_to_event_model())
                     except pp.ParseException, pe:
                         logger.critical("%s: %s of inning %s\n%s" % (raw_event.title(), 
                                                                       game.get_half_string(), 
@@ -98,6 +98,7 @@ if __name__ == "__main__":
                         raise
                     except:
                         raise# StandardError("Error with event: {}".format(raw_event.text()))
+            game.set_previous_event_as_game_end()
             session.commit()    
             games.append(game)
             success_games.append(game.game_id)
