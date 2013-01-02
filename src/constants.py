@@ -126,6 +126,9 @@ BASE_LOOKUP = {1:1,
                "3rd":3,
                "third":3,
                "third base":3,
+               4:4,
+               "home":4,
+               "home plate":4
                }
 TOP = 0
 BOTTOM = 1  
@@ -198,12 +201,15 @@ class PARSING:
     POSITION = "position"
     REPLACING = "replacing"
     UNKNOWN = "unknown"
+    EARNED = "earned"
+    UNEARNED = "unearned"
 
 class PARSE_ADVANCE:
     DOUBLE = "double"
     FIELDERS_CHOICE = "fielders choice"
     GROUND_RULE = "ground rule"
     HIT_BY_PITCH = "hit by pitch"
+    HOME_RUN = "home run"
     INTENTIONAL_WALK = "intentional walk"
     PASS_BALL = "pass ball"
     PLAYER_NUM = "player num"
