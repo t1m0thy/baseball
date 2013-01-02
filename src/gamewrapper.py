@@ -28,13 +28,13 @@ class GameWrapper:
         self._game.pitch_pickoff_attempt(base, throw_position, catch_position)
     
     def swinging_strike(self, *args):
-        self._game.pitch_swinging_strike(*args)
+        self._game.pitch_swinging_strike()
     
     def called_strike(self, *args):
-        self._game.pitch_called_strike(*args)
+        self._game.pitch_called_strike()
     
     def ball(self, *args):
-        self._game.pitch_ball(*args)
+        self._game.pitch_ball()
 
     def dropped_foul(self, text, location, tokens):
         error = tokens.get(constants.PARSING.ERROR, None)
@@ -77,12 +77,7 @@ class GameWrapper:
                                  constants.PARSING_OUTS.FOUL in description)
         else:
             raise StandardError("Parsing Error from unknown putout description: " + ' '.join(tokens))
-        
-    def advance(self, *args):
-        self.parse_advance(*args)
-    
-    def score(self, *args):
-        self.parse_score(*args)
+
     
     def defensive_sub(self, *args):
         self.parse_defensive_sub(*args)
@@ -107,6 +102,17 @@ class GameWrapper:
         description = tokens[constants.PARSING.DESCRIPTION]
         player_name = ' '.join(tdict[constants.PARSING.PLAYER][1:])
         base = tdict["base"][0]
+        self._advance(player_name, base, description)
+    
+    def parse_score(self, text, location, tokens):
+        tdict = tokens.asDict()
+        description = tokens[constants.PARSING.DESCRIPTION]
+        player_name = ' '.join(tdict[constants.PARSING.PLAYER][1:])
+        earned = constants.PARSING.EARNED in description
+        base = 4
+        self._advance(player_name, base, description, earned)
+       
+    def _advance(self, player_name, base, description,earned=True):
         if constants.PARSE_ADVANCE.WILD_PITCH in description:
             self._game.advance_on_wild_pitch(player_name, base)
         elif constants.PARSE_ADVANCE.PASS_BALL in description:
@@ -114,11 +120,13 @@ class GameWrapper:
         elif constants.PARSE_ADVANCE.THROW in description:
             self._game.advance_on_throw(player_name, base)
         elif constants.PARSE_ADVANCE.SINGLE in description:
-            self._game.hit_single(player_name)
+            self._game.hit_single(player_name, location = description.get(constants.PARSING.LOCATION, None))
         elif constants.PARSE_ADVANCE.DOUBLE in description:
-            self._game.hit_double(player_name)
+            self._game.hit_double(player_name, location = description.get(constants.PARSING.LOCATION, None))
         elif constants.PARSE_ADVANCE.TRIPLE in description:
-            self._game.hit_triple(player_name)
+            self._game.hit_triple(player_name, location = description.get(constants.PARSING.LOCATION, None))
+        elif constants.PARSE_ADVANCE.HOME_RUN in description:
+            self._game.hit_home_run(player_name, location = description.get(constants.PARSING.LOCATION, None))
         elif constants.PARSING.ERROR in description:
             self._game.advance_on_error(player_name, 
                                         base, 
@@ -138,10 +146,5 @@ class GameWrapper:
             batter_number = description.get(constants.PARSE_ADVANCE.PLAYER_NUM, None)
             self._game.advance_from_batter(player_name, base, batter_number)
         else:
-            self._game._advance_player(player_name, base)
-        
-    def parse_score(self, text, location, tokens):
-        tdict = tokens.asDict()
-        player_name = ' '.join(tdict[constants.PARSING.PLAYER][1:])
-        self._game.add_score(player_name)
-       
+            self._game._advance_player(player_name, base, earned)
+

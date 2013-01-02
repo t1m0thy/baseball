@@ -74,48 +74,60 @@ class GameState:
         self.wild_pitch_flag = False
         self.passed_ball_flag = False
         
-        self.fielded_by = None
-        self.batted_ball_type = None
-        self.bunt_flag = False  #TODO: getting this with point streak?
+        self.fielded_by = 0
+        self.batted_ball_type = None #TODO: getting batted_ball_type with point streak?
+        self.bunt_flag = False  #TODO: getting bunt_flag with point streak?
         self.foul_flag = False
         self.hit_location = 0
         self.number_of_errors = 0
+        
         self.first_error_player = None
         self.first_error_type = None
         self.second_error_player = None
         self.second_error_type = None
         self.third_error_player = None
         self.third_error_type = None
+
         self.batter_destination = None
         self.runner_on_first_destination = None
         self.runner_on_second_destination = None
         self.runner_on_third_destination = None
+
         self.play_on_batter = None
         self.play_on_runner_on_first = None
         self.play_on_runner_on_second = None
         self.play_on_runner_on_third = None
+        
         self.stolen_base_for_runner_on_first = None
         self.stolen_base_for_runner_on_second = None
         self.stolen_base_for_runner_on_third = None
+        
         self.caught_stealing_for_runner_on_first = None
         self.caught_stealing_for_runner_on_second = None
         self.caught_stealing_for_runner_on_third = None
+        
         self.pickoff_of_runner_on_first = None
         self.pickoff_of_runner_on_second = None
         self.pickoff_of_runner_on_third = None
+        
         self.pitcher_charged_with_runner_on_first = None
         self.pitcher_charged_with_runner_on_second = None
         self.pitcher_charged_with_runner_on_third = None
+        
         self.new_game_flag = False
         self.end_game_flag = False
+        
         self.pinch_runner_on_first = None
         self.pinch_runner_on_second = None
         self.pinch_runner_on_third = None
+        
         self.runner_removed_for_pinch_runner_on_first = None
         self.runner_removed_for_pinch_runner_on_second = None
         self.runner_removed_for_pinch_runner_on_third = None
+        
         self.batter_removed_for_pinch_hitter = None
         self.position_of_batter_removed_for_pinch_hitter = None
+        
         self.fielder_with_first_putout = None
         self.fielder_with_second_putout = None
         self.fielder_with_third_putout = None
@@ -337,8 +349,19 @@ class GameState:
         self.fielded_by = 0
         self.bunt_flag = False
         self.foul_flag = False
+        self.batter_destination = None
+        self.runner_on_first_destination = None
+        self.runner_on_second_destination = None
+        self.runner_on_third_destination = None
         self.hit_location = 0
         self.number_of_errors = 0
+        self.first_error_player = None
+        self.first_error_type = None
+        self.second_error_player = None
+        self.second_error_type = None
+        self.third_error_player = None
+        self.third_error_type = None
+        
         logger.info("-> %s to bat" % batter)
 
         # If this the first batter in a new half, swap the lineups
@@ -422,15 +445,16 @@ class GameState:
     #------------------------------------------------------------------------------ 
 
     def error(self, error_position, error_type):
+        position_code = self.lookup_position_num(error_position) 
         self.number_of_errors += 1
         if self.number_of_errors == 1:
-            self.first_error_player = error_position
+            self.first_error_player = position_code
             self.first_error_type = error_type
         elif self.number_of_errors == 2:
-            self.second_error_player = error_position
+            self.second_error_player = position_code
             self.second_error_type = error_type
         elif self.number_of_errors == 3:
-            self.third_error_player = error_position
+            self.third_error_player = position_code
             self.third_error_type = error_type
             
 
@@ -497,6 +521,15 @@ class GameState:
         self.triple_play_flag = triple_play
         logger.info("Fielders {}".format(fielders))
         self.fielded_by = fielders[0]
+        play_string = ''.join(fielders)
+        if player_name == self.batter:
+            self.play_on_batter = play_string
+        elif player_name == self.runner_on_first:
+            self.play_on_runner_on_first = play_string
+        elif player_name == self.runner_on_second:
+            self.play_on_runner_on_second = play_string
+        elif player_name == self.runner_on_third:
+            self.play_on_runner_on_third = play_string
         self._out(player_name)
         
     def out_caught_stealing(self, runner_name, fielders):
@@ -509,9 +542,15 @@ class GameState:
         self._out(self.batter)
         
     def lookup_position(self, pos):
+        """
+        return position character code ie. P, C, 1B, 2B ... CF
+        """
         return constants.POSITION_LOOKUP[pos.lower()]
 
     def lookup_position_num(self, pos):
+        """
+        return position number: 1 - 9
+        """
         return constants.POSITION_CODES[self.lookup_position(pos)]
     
     def out_fly_out(self, player_name, fielder_position, sacrifice=False):
@@ -544,22 +583,6 @@ class GameState:
         logger.debug("Unassisted out for {outs} outs".format(outs=self.outs))
 
     #------------------------------------------------------------------------------ 
-    # SCORE
-    #------------------------------------------------------------------------------ 
-        
-    def add_score(self, player_name):
-        self.runs_scored_in_this_half_inning += 1
-        self.rbi_on_play += 1
-        if self.bat_home_id:
-            self.home_score += 1
-        else:
-            self.visitor_score += 1
-        logger.debug("Score now Home %s, Vis %s" % (self.home_score, self.visitor_score))
-        if player_name == self.batter:
-            self._increment_batting_order()
-            self.hit_value = 4
-
-    #------------------------------------------------------------------------------ 
     # ADVANCE
     #------------------------------------------------------------------------------ 
 
@@ -574,18 +597,34 @@ class GameState:
     def advance_on_throw(self, player_name, base):
         self._advance_player(player_name, base)
 
-    def hit_single(self, player_name):
+    def hit_single(self, player_name, location=None):
         assert(self.batter == player_name)
+        if location is not None:
+            self.hit_location = self.lookup_position_num(location)
         self._advance_player(player_name, 1)
+        self.hit_value = 1
         
-    def hit_double(self, player_name):
+    def hit_double(self, player_name, location=None):
         assert(self.batter == player_name)
+        if location is not None:
+            self.hit_location = self.lookup_position_num(location)
         self._advance_player(player_name, 2)
+        self.hit_value = 2
 
-    def hit_triple(self, player_name):
+    def hit_triple(self, player_name, location=None):
         assert(self.batter == player_name)
+        if location is not None:
+            self.hit_location = self.lookup_position_num(location)
         self._advance_player(player_name, 3)        
+        self.hit_value = 3
 
+    def hit_home_run(self, player_name, location=None):
+        assert(self.batter == player_name)
+        if location is not None:
+            self.hit_location = self.lookup_position_num(location)
+        self._advance_player(player_name, 4)
+        self.hit_value = 4
+            
     def advance_on_error(self, player_name, base, error_position, error_type):
         self.error(error_position, error_type)        
         self._advance_player(player_name, base)
@@ -605,7 +644,7 @@ class GameState:
     def advance_from_batter(self, player_name, base, batter_number):
         self._advance_player(player_name, base)
         
-    def _advance_player(self, player_name, base):
+    def _advance_player(self, player_name, base, earned=True):
         """
         advance runners to a base
         
@@ -614,22 +653,54 @@ class GameState:
         """
         base_num = constants.BASE_LOOKUP[base]
         logger.info("%s to %s" % ( player_name, base))
-        if base == 1:
+        
+        if base_num == 4 and not earned:
+            destination_base_name = 5
+            #TODO: add special case of earned by pitcher unearned by batting team = 6 
+        else:
+            destination_base_name = base_num
+        if player_name == self.batter:
+            self.batter_destination = destination_base_name
+        elif player_name == self.runner_on_first:
+            self.runner_on_first_destination = destination_base_name
+        elif player_name == self.runner_on_second:
+            self.runner_on_second_destination = destination_base_name
+        elif player_name == self.runner_on_third:
+            self.runner_on_third_destination = destination_base_name
+            
+        if base_num == 1:
             self.runner_on_first = player_name 
-        elif base == 2:
+        elif base_num == 2:
             if self.runner_on_first == player_name:
                 self.runner_on_first = None
             self.runner_on_second = player_name
-        elif base == 3:
+        elif base_num == 3:
             if self.runner_on_first == player_name:
                 self.runner_on_first = None
             if self.runner_on_second == player_name:
                 self.runner_on_second = None
             self.runner_on_third = player_name
+        if base_num == 4:
+            if self.runner_on_first == player_name:
+                self.runner_on_first = None
+            if self.runner_on_second == player_name:
+                self.runner_on_second = None
+            if self.runner_on_third == player_name:
+                self.runner_on_third = None
+            self._score(earned)        
         #logger.debug("runners now 1st %s, 2nd %s, 3rd, %s" % (self.runner_on_first, self.runner_on_second, self.runner_on_third))
         if player_name == self.batter:
-            self._increment_batting_order()  
-            self.hit_value = base_num
+            self._increment_batting_order()
+            
+    def _score(self, earned):            
+        self.runs_scored_in_this_half_inning += 1
+        if earned:
+            self.rbi_on_play += 1 #TODO: do rbi's count on unearned?
+        if self.bat_home_id:
+            self.home_score += 1
+        else:
+            self.visitor_score += 1
+        logger.debug("Score now Home %s, Vis %s" % (self.home_score, self.visitor_score))
 
     #------------------------------------------------------------------------------ 
     # SUBSTITUTIONS
