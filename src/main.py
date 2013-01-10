@@ -60,7 +60,6 @@ if __name__ == "__main__":
             game.visiting_team = scraper.away_team()
             game.game_id = gameid
             
-            game.set_database_session(session)
 
             # pass game to parser 
             #TODO: the game wrapper for point streak should be instanced here...
@@ -99,7 +98,10 @@ if __name__ == "__main__":
                     except:
                         raise# StandardError("Error with event: {}".format(raw_event.text()))
             game.set_previous_event_as_game_end()
-            session.commit()    
+            
+            for event in game.event_list:
+                session.add(event)
+            session.commit()
             games.append(game)
             success_games.append(game.game_id)
         except Exception, e:

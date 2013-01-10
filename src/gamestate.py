@@ -226,6 +226,10 @@ class GameState:
         self._advancing_event_text = ''
         self._last_event = None
         self._pending_runner_event = None
+        
+        # the whole reason this class exists is to fill this list!
+        self.event_list = []
+        
 
     #------------------------------------------------------------------------------ 
     # GAME SETUP
@@ -261,10 +265,7 @@ class GameState:
             newmodel.__dict__[modelattribute] = self.__dict__[key]
         return newmodel
 
-    def set_database_session(self, session):
-        self._database_session = session    
-    
-    def send_event_to_database(self, batting_event = True):
+    def _record_event(self, batting_event = True):
         """ 
         send event to database
         normally batting events, but in the case of runner events, 
@@ -274,7 +275,7 @@ class GameState:
         self.batter_event_flag = batting_event
         self.event_text += self._advancing_event_text
         self._last_event = self.get_state_as_event_model()
-        self._database_session.add(self._last_event)
+        self.event_list.append(self._last_event)
         logger.info("> DATABASE ADD EVENT<")
         self._apply_pending_base_runner_positions()
         self._reset_flags()
@@ -284,7 +285,7 @@ class GameState:
     def set_previous_event_as_game_end(self):
         # in case last event was a runner event, it is still pending, so send it
         self._last_event.GAME_END_FL = True
-        self._database_session.merge(self._last_event)
+
     #------------------------------------------------------------------------------ 
     # UTILITIES
     #------------------------------------------------------------------------------ 
@@ -727,7 +728,7 @@ class GameState:
         self._out(runner_name)
         self.event_text += 'CS(' + ''.join([str(p) for p in fielders]) + ')'
         
-        self.send_event_to_database(batting_event = False)
+        self._record_event(batting_event = False)
 
         self.pitch_sequence += constants.PITCH_CHARS.PLAY_NOT_INVOLVING_THE_BATTER
 
@@ -747,7 +748,7 @@ class GameState:
     
         self._out(runner_name)
         self.event_text += 'PO(' + ''.join([str(p) for p in fielders]) + ')'
-        self.send_event_to_database(batting_event = False)
+        self._record_event(batting_event = False)
         self.pitch_sequence += constants.PITCH_CHARS.PLAY_NOT_INVOLVING_THE_BATTER
         
         self.pickoff_of_runner_on_first = False
@@ -842,14 +843,14 @@ class GameState:
         self.wild_pitch_flag = True
         self.event_text += "WP"
         self._advance_player(player_name, base)
-        self.send_event_to_database(batting_event = False)
+        self._record_event(batting_event = False)
         self.pitch_sequence += constants.PITCH_CHARS.PLAY_NOT_INVOLVING_THE_BATTER
     
     def advance_on_passed_ball(self, player_name, base):
         self.passed_ball_flag = True
         self.event_text += "PB"
         self._advance_player(player_name, base)
-        self.send_event_to_database(batting_event = False)
+        self._record_event(batting_event = False)
         self.pitch_sequence += constants.PITCH_CHARS.PLAY_NOT_INVOLVING_THE_BATTER
 
     def advance_on_stolen_base(self, player_name, base):
@@ -865,7 +866,7 @@ class GameState:
 
         self.event_text += "SB" + str(constants.BASE_LOOKUP[base])        
         self._advance_player(player_name, base, earned=False)
-        self.send_event_to_database(batting_event=False) 
+        self._record_event(batting_event=False) 
 
         self.pitch_sequence += constants.PITCH_CHARS.PLAY_NOT_INVOLVING_THE_BATTER
 

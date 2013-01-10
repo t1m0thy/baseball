@@ -150,7 +150,7 @@ class GameWrapper:
 
     
     def event_complete(self, *args):
-        self._game.send_event_to_database()
+        self._game._record_event()
     
     
 
