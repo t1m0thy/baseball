@@ -99,7 +99,7 @@ if __name__ == "__main__":
                         raise# StandardError("Error with event: {}".format(raw_event.text()))
             game.set_previous_event_as_game_end()
             
-            for event in game.event_list:
+            for event in game.events():
                 session.add(event)
             session.commit()
             games.append(game)
