@@ -32,13 +32,13 @@ class GameState:
         
         self.batter = None
         self.batter_hand = None
-        self.result_batter = None
-        self.result_batter_hand = None
+        self.result_batter = None #TODO: result batter
+        self.result_batter_hand = None #TODO: result batter hand
         
         self.pitcher = None
-        self.pitcher_hand = None
-        self.result_pitcher = None
-        self.result_pitcher_hand = None
+        self.pitcher_hand = None 
+        self.result_pitcher = None #TODO: result pitcher
+        self.result_pitcher_hand = None #TODO: result pitcher hand
         
         self.catcher = None
         self.first_baseman = None
@@ -53,7 +53,7 @@ class GameState:
         self.runner_on_second = None
         self.runner_on_third = None
         
-        self.event_text = ''  #TODO: implement event_text
+        self.event_text = ''
         self.leadoff_flag = False
         self.pinch_hit_flag = False
         self.defensive_position = None
@@ -302,9 +302,9 @@ class GameState:
     #------------------------------------------------------------------------------ 
 
 
-    def _swap_lineups(self, bat_home=True):
+    def _update_lineups_and_fielders(self):
         """ set with a list of players in numbered position order """
-        if bat_home:
+        if self.bat_home_id:
             self.batting_lineup = self.home_lineup
             self.fielding_lineup = self.away_lineup
             self._current_place_in_order = self._home_place_in_batting_order
@@ -312,9 +312,13 @@ class GameState:
             self.batting_lineup = self.away_lineup
             self.fielding_lineup = self.home_lineup
             self._current_place_in_order = self._away_place_in_batting_order
-            
+        #self._update_fielders()
+        
+    def _update_fielders(self):    
         fielder_pos_dict = self.fielding_lineup.position_dict()
         self.pitcher = fielder_pos_dict['P']
+        player_pitcher = self.fielding_lineup.find_player_by_name(self.pitcher)
+        self.pitcher_hand = player_pitcher.hand
         self.catcher = fielder_pos_dict['C']
         self.first_baseman = fielder_pos_dict['1B']
         self.second_baseman = fielder_pos_dict['2B']
@@ -448,6 +452,7 @@ class GameState:
         return position number: 1 - 9
         """
         return constants.POSITION_CODES[self.lookup_position(pos)]  
+   
     #------------------------------------------------------------------------------ 
     #  NEW CALLS
     #------------------------------------------------------------------------------ 
@@ -483,33 +488,25 @@ class GameState:
         self.third_error_type = None
         self.batter_event_flag = False # set this to False for any events sent to database before event is complete
         
-        
         logger.info("-> %s to bat" % batter)
-
-        # If this the first batter in a new half, swap the lineups
-        # we wait to perform this swap in order to allow any defensive substitutions to be swapped at the beginning of the half
-        if self._next_batter_leadoff:
-            self._swap_lineups(self.bat_home_id)        
 
         try:
             batter_player = self._current_batting_lineup().find_player_by_name(self.batter)
             assert(batter_player.order == self._current_place_in_order)
-            self.defensive_position = batter_player.position
-            self.lineup_position = batter_player.order            
+       
         except KeyError, e:
             # Player not in lineup
             logger.warning(self.batter + " not found in lineup for atbat")
             try:
-                new_player = self._current_batting_roster().find_player_by_name(self.batter)
+                batter_player = self._current_batting_roster().find_player_by_name(self.batter)
                 replacing_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
-                logger.warning("Used roster for auto-substitution of %s for %s" % (new_player.name, replacing_player.name))
-                self.offensive_sub(new_player.name, replacing_player.name)
+                logger.warning("Used roster for auto-substitution of %s for %s" % (batter_player.name, replacing_player.name))
+                self.offensive_sub(batter_player.name, replacing_player.name)
                 # normally in an offensive sub, the player position would be PH
                 # in the case of an auto sub, we are going to just that player the position of the old player
                 # this is because there likely wont be a defensive sub either to put this new player in the correct position 
-                new_player.position = replacing_player.position
-                self.defensive_position = new_player.position
-                self.lineup_position = new_player.order 
+                batter_player.position = replacing_player.position
+
             except KeyError:
                 raise StandardError("Auto Replace Failed.  %s not found in roster" % self.batter)
         except AssertionError, e:
@@ -525,6 +522,9 @@ class GameState:
                     raise                
             else:
                 raise
+        self.defensive_position = batter_player.position
+        self.lineup_position = batter_player.order   
+        self.batter_hand = batter_player.hand
         if self._next_batter_leadoff:
             self._next_batter_leadoff = False
             self.leadoff_flag = True
@@ -562,6 +562,8 @@ class GameState:
         else:
             self.inning = 1
         self._next_batter_leadoff = True
+        
+        self._update_lineups_and_fielders()
         #NOTE: lineups will be swapped when the first batter is called.
         # this allows any initial defensive subs to be performed prior to the first batter 
         
@@ -1040,12 +1042,12 @@ class GameState:
                 raise StandardError("Defensive Sub Error, no new position or replacement name")
             current_defense = self._current_fielding_lineup()
             try:
-                # moves to case
+                # player moves to new position
                 current_defense.find_player_by_name(new_player_name)
                 current_defense.set_player_position(new_player_name, position)
                 logging.info("{} moves to {}".format(new_player_name, position))
             except KeyError:
-                # subs at case
+                # player substitutes
                 new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
                 new_player.set_position(position)
                 removed_player = current_defense.find_player_by_position(position)
@@ -1069,6 +1071,8 @@ class GameState:
                 #assert (possible_remove_player.position == 'P')
                 #possible_remove_player.order = None
             self._current_fielding_lineup().add_player(new_player)
+        #self._update_fielders()
+        
                 
     def offensive_sub(self, new_player_name, replacing_name, pinch_runner=False, base=None):
         removed_player = self._current_batting_lineup().remove_player(replacing_name)

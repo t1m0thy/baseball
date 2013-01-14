@@ -13,8 +13,7 @@ GAME_XML_CACHE_PATH = CACHE_PATH + "games/game_%s.xml"
 GAME_XML_SEQ_CACHE_PATH = CACHE_PATH + "games/game_%s_seq_%s.xml"
 
 PLAYER_CACHE_PATH = CACHE_PATH + "players/player_%s.html"
-LISTINGS_CACHE_PATH = CACHE_PATH + "listings/list_%s.html" 
-
+LISTINGS_CACHE_PATH = CACHE_PATH + "listings/list_%s.html"
 
 logger = logging.getLogger("pointstreak scraper")
 
@@ -69,15 +68,19 @@ class PointStreakScraper(GameScraper):
     def _add_positions(self, lineup, playerlist):
         for player_dict in playerlist:
             try:
-                lineup.add_player(Player(player_dict.get("Name"), 
+                new_player = Player(player_dict.get("Name"), 
                                           player_dict.get("Number"), 
                                           player_dict.get("Order"), 
                                           player_dict.get("Position"), 
                                           player_dict.get("Hand"),
-                                          iddict={"pointstreak":player_dict.get("PlayerId")}))
+                                          iddict={"pointstreak":player_dict.get("PlayerId")})
+                player_info = get_player_info(player_dict.get("PlayerId"))
+                new_player.hand = player_info.THROW_HAND
+                lineup.add_player(new_player)    
             except (AttributeError, KeyError):
                 logger.error("making Player from dict = %s" % player_dict)
                 raise
+            
     def starting_lineups(self):
         complete = False
         seq = 0
@@ -211,10 +214,37 @@ class PointStreakXMLScraper(PointStreakScraper):
         home_roster = PlayerList()
         self._add_positions(away_roster, away_offense + away_replaced + away_pitchers)
         self._add_positions(home_roster, home_offense + home_replaced + home_pitchers)
-
         return away_roster, home_roster
 
-    def _player_page_from_id(self, player_id):
-        """ return point streak html from a player id """
-        return get_cached_url(PS_PLAYER_URL % player_id, PLAYER_CACHE_PATH % ("PS" + str(player_id)))
+from models.playerinfo import PlayerInfo
+from bs4 import BeautifulSoup
+
+def get_player_info(player_id):
+    html = _player_page_from_id(player_id)
+    soup = BeautifulSoup(html)
+    player_info = soup.find_all("div", {"id":"psbb_player_info"})[0]
+    #photo_url = player_info.find_all("img")[0].attrs.get("src")
+    rows = [c for c in player_info.table.table.table.find_all("td")]
+    info_dict = dict([r.text.strip().split(":") for r in rows])
+    
+    pi  = PlayerInfo()
+    bats_throws = info_dict.get("Bats/Throws").split("/")
+    if len(bats_throws) > 0:
+        pi.BAT_HAND = bats_throws[0].strip()
+    if len(bats_throws) > 1:
+        pi.THROW_HAND = bats_throws[1].strip()
+    pi.BIRTHDAY = info_dict.get("Birthdate")
+    pi.COLLEGE_YEAR = info_dict.get("Class")
+    pi.COLLEGE_NAME = info_dict.get("College")
+    pi.DRAFT_STATUS = info_dict.get("Draft Status")
+    pi.HEIGHT = info_dict.get("Height")
+    pi.HOMETOWN = info_dict.get("Hometown")
+    pi.POSITIONS = info_dict.get("Position")
+    pi.WEIGHT = info_dict.get("Weight")
+    return pi
         
+def _player_page_from_id(player_id):
+    """ return point streak html from a player id """
+    return get_cached_url(PS_PLAYER_URL % player_id, PLAYER_CACHE_PATH % ("PS" + str(player_id)))
+        
+    
