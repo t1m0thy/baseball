@@ -1,7 +1,8 @@
 import lineup
-from lineup import Player
+from lineup import Player, LineupError
 from constants import LEFT, RIGHT
 import unittest
+
 
 class TestCase(unittest.TestCase):
     def setUp(self):
@@ -30,6 +31,19 @@ class TestCase(unittest.TestCase):
         self.lineup.add_player(Player("Marty Barret", 17, 8, "2B", RIGHT))
         self.lineup.add_player(Player("Jackie Gutierrez", 41, 9, "SS", RIGHT))
         self.assertFalse(self.lineup.is_complete())
+        self.assertRaises(LineupError, self.lineup.is_complete, raise_reason=True)
+
+    def test_update(self):
+        self.lineup.add_player(Player("Wade Boggs", 26, 1, "P", LEFT))
+        self.lineup.update_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
+        self.assertEqual(self.lineup.find_player_by_position("3B").name, "Wade Boggs")
+        pass
+
+    def test_update_error(self):
+        self.lineup.add_player(Player("Wade Boggs", 26, 1, "P", LEFT))
+        self.lineup.update_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
+        self.assertRaises(KeyError, self.lineup.update_player, Player("Wade Boggs", None, 1, "3B", LEFT))
+        pass
 
 class TestCaseComplete(unittest.TestCase):
     def setUp(self):
@@ -66,8 +80,7 @@ class TestCaseComplete(unittest.TestCase):
         self.assertRaises(KeyError, self.lineup.find_player_by_order, 12)
 
     def test_double_add(self):
-        self.assertRaises(Exception, self.lineup.add_player, ("Oil Can Boyd", 41, 10, "P", RIGHT))
-        pass
+        self.assertRaises(LineupError, self.lineup.add_player, Player("Oil Can Boyd", 41, 10, "P", RIGHT))
 
     def test_print(self):
         print self.lineup

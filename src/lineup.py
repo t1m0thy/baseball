@@ -1,5 +1,7 @@
 from constants import POSITIONS, DH, P, POSITION_LOOKUP
 
+class LineupError(Exception):
+    pass
 
 class Player:
     def __init__(self, name, number, order, position, hand, iddict={}):
@@ -39,12 +41,35 @@ class PlayerList(list):
     def __init__(self):
         list.__init__(self)
 
+    def add_players(self, player_list):
+        """
+        add any player objects from list
+        default, only add if players have numbers
+        """
+        for p in player_list:
+            self.add_player(p)
+
     def add_player(self, player):
         """add_player if not already in lineup"""
         if player not in self:
             self.append(player)
+        else:
+            raise LineupError("%s already in lineup" % player.name)
+
+    def update_player(self, player):
+        """add_player.
+        if already in lineup, replace old player
+        """
+        my_player_numbers = [p.number for p in self]
+        if player.number is None:
+            raise KeyError("All Players must have numbers")
+        if player.number not in my_player_numbers:
+            self.append(player)
+        else:
+            replace_index = my_player_numbers.index(player.number)
+            self[replace_index] = player
 #        else:
-#            raise StandardError("%s already in lineup" % name)
+#            raise LineupError("%s already in lineup" % name)
 
     def find_player_by_name(self, name):
         for p in self:
@@ -88,32 +113,32 @@ class Lineup(PlayerList):
             self.find_player_by_position(DH)
             if len(self) > 10:
                 if raise_reason:
-                    raise StandardError("Over 10 players in the lineup")
+                    raise LineupError("Over 10 players in the lineup")
                 return False
         except KeyError:
             # no DH, so there should be a pitcher in the order
             try:
                 if self.find_player_by_position(P).order == None:
                     if raise_reason:
-                        raise StandardError("No DH in lineup and pitcher not in order")
+                        raise LineupError("No DH in lineup and pitcher not in order")
                     return False
             except KeyError:
                 if raise_reason:
-                    raise StandardError("No DH in and no pitcher")
+                    raise LineupError("No DH in and no pitcher")
                 return False
 
             if len(self) > 9:
                 if raise_reason:
-                    raise StandardError("Over 9 in lineup with no DH")
+                    raise LineupError("Over 9 in lineup with no DH")
                 return False
 
-                #raise StandardError("Over 9 players in the lineup")
+                #raise LineupError("Over 9 players in the lineup")
         try:
             for i in range(1, 10):
                 self.find_player_by_order(i)
         except KeyError:
             if raise_reason:
-                raise StandardError("Missing order number %s" % i)
+                raise LineupError("Missing order number %s" % i)
             return False
 
         try:
@@ -121,7 +146,7 @@ class Lineup(PlayerList):
                 self.find_player_by_position(p)
         except KeyError:
             if raise_reason:
-                raise StandardError("Missing position %s" % p)
+                raise LineupError("Missing position %s" % p)
             return False
 
         return True
