@@ -11,7 +11,7 @@ def setupRootLogger(level):
     console.setFormatter(formatter)
     # add the handler to the root logger
     root = logging.getLogger()
-    root.setLevel(level)    
+    root.setLevel(level)
     root.addHandler(console)
     root.setLevel(level)
     return root

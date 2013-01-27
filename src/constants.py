@@ -25,7 +25,8 @@ class PITCH_CHARS:
     CALLED_BALL_BECAUSE_PITCHER_WENT_TO_HIS_MOUTH = 'V'
     BALL_PUT_INTO_PLAY_BY_BATTER = 'X'
     BALL_PUT_INTO_PLAY_ON_PITCHOUT = 'Y'
-    
+
+
 class PLAYS:
     FLY_BALL_BUNT = 'BF'
     GROUND_BALL_BUNT = 'BG'
@@ -57,17 +58,17 @@ class PLAYS:
     UNSPECIFIED_TRIPLE_PLAY = 'TP'
 
 
-POSITION_LOOKUP = {"p":"P",
+POSITION_LOOKUP = {"p": "P",
                    "pr": "P",
-                   "pitching": "P", 
+                   "pitching": "P",
                   "pitcher": "P",
-                  1:"P",
-                  '1':"P",
-                  "c":"C",
+                  1: "P",
+                  '1': "P",
+                  "c": "C",
                   "catching": "C",
                   "catcher": "C",
-                  2:"C",
-                  '2':"C",
+                  2: "C",
+                  '2': "C",
                   "first base": "1B",
                   "first baseman": "1B",
                   "1b": "1B",
@@ -103,7 +104,7 @@ POSITION_LOOKUP = {"p":"P",
                   '7': "LF",
                   "cf": "CF",
                   "center field": "CF",
-                  "center fielder": "CF",                  
+                  "center fielder": "CF",
                   "center": "CF",
                   8: "CF",
                   '8': "CF",
@@ -130,45 +131,43 @@ POSITIONS = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"]
 DH = "DH"
 P = "P"
 
-POSITION_CODES = {"P":1, 
-                  "C":2, 
-                  "1B":3, 
-                  "2B":4, 
-                  "3B":5, 
-                  "SS":6, 
-                  "LF":7, 
-                  "CF":8, 
-                  "RF":9,                  
-                  "DH":10,
-                  "PH":11,
-                  "PR":12}
+POSITION_CODES = {"P": 1,
+                  "C": 2,
+                  "1B": 3,
+                  "2B": 4,
+                  "3B": 5,
+                  "SS": 6,
+                  "LF": 7,
+                  "CF": 8,
+                  "RF": 9,
+                  "DH": 10,
+                  "PH": 11,
+                  "PR": 12}
 
-BASE_LOOKUP = {1:1,
-               "1st base":1,
-               "1st":1,
-               "first":1,
-               "first base":1,
-               2:2,
-               "2nd base":2,
-               "2nd":2,
-               "second":2,
-               "second base":2,
-               3:3,
-               "3rd base":3,
-               "3rd":3,
-               "third":3,
-               "third base":3,
-               4:4,
-               "home":4,
-               "home plate":4
+BASE_LOOKUP = {1: 1,
+               "1st base": 1,
+               "1st": 1,
+               "first": 1,
+               "first base": 1,
+               2: 2,
+               "2nd base": 2,
+               "2nd": 2,
+               "second": 2,
+               "second base": 2,
+               3: 3,
+               "3rd base": 3,
+               "3rd": 3,
+               "third": 3,
+               "third base": 3,
+               4: 4,
+               "home": 4,
+               "home plate": 4
                }
 TOP = 0
-BOTTOM = 1  
+BOTTOM = 1
 
 RIGHT = 'R'
 LEFT = 'L'
-
-
 
 #EVT_CODE_UNKNOWN_(OBSOLETE) = 0
 #EVT_CODE_NONE_(OBSOLETE) = 1
@@ -196,6 +195,7 @@ EVT_CODE_TRIPLE = 22
 EVT_CODE_HOME_RUN = 23
 #EVT_CODE_MISSING_PLAY_(OBSOLETE) = 24
 
+
 class PARSING_OUTS:
     DOUBLE_PLAY = "double play"
     TRIPLE_PLAY = "double play"
@@ -212,15 +212,18 @@ class PARSING_OUTS:
     POPUP = "P"
     FOUL = "F"
     OUT_COUNT = "out count"
-    
+
+
 class PARSING_PLAYER:
     NAME = "name"
     NUMBER = "number"
-    
+
+
 class PARSE_PITCHING:
     THROW_POSITION = "thrower"
     CATCH_POSITION = "pick catcher"
-    
+
+
 class PARSING:
     BASE = "base"
     DESCRIPTION = "description"
@@ -234,6 +237,7 @@ class PARSING:
     UNKNOWN = "unknown"
     EARNED = "earned"
     UNEARNED = "unearned"
+
 
 class PARSE_ADVANCE:
     DOUBLE = "double"
@@ -252,4 +256,3 @@ class PARSE_ADVANCE:
     WILD_PITCH = "wild pitch"
 
 MAX_ASSIST_COUNT = 10
-

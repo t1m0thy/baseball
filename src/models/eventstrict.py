@@ -5,7 +5,7 @@ Base = declarative_base()
 
 class Event(Base):
     __tablename__ = 'events'
-    
+
     EVENT_ID = Column(Integer, primary_key=True)
 
     GAME_ID = Column(String(12))

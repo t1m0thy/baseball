@@ -8,13 +8,12 @@ Descriptions (not header names) are modified so they may be codified into python
 all hyphens are replaced with spaces: "pinch-hitter" becomes "pinch hitter"
 and descriptions starting with numbers are replaced by words: "1st" becomes "first"
 
-This way, all descriptions can be converted to attribute names 
+This way, all descriptions can be converted to attribute names
 by replacing spaces with underscores
 and making all characters lowercase
 any paranthetical comments from description are converted to comments here
 
 see utility functions at bottom of file
-
 """
 cw_event_fields = [('0', 'Game ID', 'GAME_ID'),
  ('1', 'Visiting team', 'AWAY_TEAM_ID'),
@@ -119,13 +118,13 @@ cw_event_fields_extended = [
  ('0', 'home team id', 'HOME_TEAM_ID'),
  ('1', 'batting team id', 'BAT_TEAM_ID'),
  ('2', 'fielding team id', 'FLD_TEAM_ID'),
- ('3', 'half inning', 'BAT_LAST_ID'), # (differs from batting team if home team bats first)
+ ('3', 'half inning', 'BAT_LAST_ID'),  # (differs from batting team if home team bats first)
  ('4', 'start of half inning flag', 'INN_NEW_FL'),
  ('5', 'end of half inning flag', 'INN_END_FL'),
  ('6', 'score for team on offense', 'START_BAT_SCORE_CT'),
  ('7', 'score for team on defense', 'START_FLD_SCORE_CT'),
  ('8', 'runs scored in this half inning', 'INN_RUNS_CT'),
- ('9',  'number of plate appearances in game for team on offense', 'GAME_PA_CT'),
+ ('9', 'number of plate appearances in game for team on offense', 'GAME_PA_CT'),
  ('10', 'number of plate appearances in inning for team on offense', 'INN_PA_CT'),
  ('11', 'start of plate appearance flag', 'PA_NEW_FL'),
  ('12', 'truncated plate appearance flag', 'PA_TRUNC_FL'),
@@ -167,7 +166,7 @@ cw_event_fields_extended = [
  ('48', 'force play at third flag', 'BASE3_FORCE_FL'),
  ('49', 'force play at home flag', 'BASE4_FORCE_FL'),
  ('50', 'batter safe on error flag', 'BAT_SAFE_ERR_FL'),
- ('51', 'fate of batter', 'BAT_FATE_ID'), #  (base ultimately advanced to)
+ ('51', 'fate of batter', 'BAT_FATE_ID'),  # (base ultimately advanced to)
  ('52', 'fate of runner on first', 'RUN1_FATE_ID'),
  ('53', 'fate of runner on second', 'RUN2_FATE_ID'),
  ('54', 'fate of runner on third', 'RUN3_FATE_ID'),
@@ -207,35 +206,39 @@ pitches = [('+', 'following pickoff throw by the catcher'),
  ('X', 'ball put into play by batter'),
  ('Y', 'ball put into play on pitchout')]
 
+
 def print_pitch_constants():
     for p in pitches:
-        print "%s = '%s'" % (p[1].upper().replace(' ','_') , p[0])
+        print "%s = '%s'" % (p[1].upper().replace(' ', '_'), p[0])
+
 
 def print_attribute_list():
     """
-    This function was used to print out the attribute setup code for GameState 
+    This function was used to print out the attribute setup code for GameState
     """
-    atts = [field[1].lower().replace(' ','_') for field in cw_event_fields]
-    for a in atts:                                                            
-        print ' '*8 + 'self.%s = None'%a
-    
-    atts = [field[1].lower().replace(' ','_') for field in cw_event_fields_extended]
-    for a in atts:                                                            
-        print ' '*8 + 'self.%s = None'%a
-        
+    atts = [field[1].lower().replace(' ', '_') for field in cw_event_fields]
+    for a in atts:
+        print ' ' * 8 + 'self.%s = None' % a
+
+    atts = [field[1].lower().replace(' ', '_') for field in cw_event_fields_extended]
+    for a in atts:
+        print ' ' * 8 + 'self.%s = None' % a
+
+
 def lookup_dict():
-    ed = dict((field[1].lower().replace(' ','_'), field[2]) for field in cw_event_fields)
-    eed = dict((field[1].lower().replace(' ','_'), field[2]) for field in cw_event_fields_extended)
+    ed = dict((field[1].lower().replace(' ', '_'), field[2]) for field in cw_event_fields)
+    eed = dict((field[1].lower().replace(' ', '_'), field[2]) for field in cw_event_fields_extended)
     return dict(ed.items() + eed.items())
-    
+
+
 def print_model():
     """
-    This function was used to print out the attribute setup code for GameState 
+    This function was used to print out the attribute setup code for GameState
     """
     atts = [field[2] for field in cw_event_fields]
-    for a in atts:                                                            
-        print ' '*8 + 'self.%s = None'%a
-    
+    for a in atts:
+        print ' ' * 8 + 'self.%s = None' % a
+
     atts = [field[2] for field in cw_event_fields_extended]
-    for a in atts:                                                            
-        print ' '*8 + 'self.%s = None'%a
+    for a in atts:
+        print ' ' * 8 + 'self.%s = None' % a

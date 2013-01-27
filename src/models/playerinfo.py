@@ -3,9 +3,10 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+
 class PlayerInfo(Base):
     __tablename__ = 'players'
-    
+
     ID = Column(Integer, primary_key=True)
     BAT_HAND = Column(String)
     THROW_HAND = Column(String)
@@ -17,3 +18,5 @@ class PlayerInfo(Base):
     HOMETOWN = Column(String)
     POSITIONS = Column(String)
     WEIGHT = Column(String)
+    #PREVIOUS_COLLEGE
+    #HIGH_SCHOOL
