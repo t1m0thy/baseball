@@ -60,7 +60,7 @@ class TestCaseComplete(unittest.TestCase):
         self.lineup.add_player(Player("Oil Can Boyd", 41, 10, "P", RIGHT))
 
     def test_complete(self):
-        self.assertTrue(self.lineup.is_complete(raise_reason = True))
+        self.assertTrue(self.lineup.is_complete(raise_reason=True))
 
     def test_lookups(self):
         self.assertEqual("Marty Barret", self.lineup.find_player_by_order(8).name)

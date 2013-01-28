@@ -1,7 +1,9 @@
 from constants import POSITIONS, DH, P, POSITION_LOOKUP
 
+
 class LineupError(Exception):
     pass
+
 
 class Player:
     def __init__(self, name, number, order, position, hand, iddict={}):
@@ -33,6 +35,23 @@ class Player:
     def set_position(self, position):
         self.position = self._verified_position(position)
 
+    def merge(self, other):
+        """ Any attributes of player that are not None will overwrite the value of this current player.
+        iddict is updates with data from player as well """
+        for attr in ["name", "number", "order", "position", "hand"]:
+            if other.__dict__[attr] is not None:
+                self.__dict__[attr] = other.__dict__[attr]
+        self.iddict.update(other.iddict)
+
+    def diff(self, other):
+        """return dictionary of any values that differ with other player.
+        key is the key, and then the value tuple contains local and other values
+        """
+        diffs = {}
+        for k, v in vars(self).items():
+            if vars(other)[k] != v:
+                diffs[k] = (v, vars(other)[k])
+        return diffs
 
 class PlayerList(list):
     """
@@ -49,12 +68,26 @@ class PlayerList(list):
         for p in player_list:
             self.add_player(p)
 
+    def update_players(self, player_list, ignore_numberless=False):
+        """
+        add any player objects from list
+        default, only add if players have numbers
+        """
+        for p in player_list:
+            try:
+                self.update_player(p)
+            except KeyError:
+                if ignore_numberless:
+                    pass
+                else:
+                    raise
+
     def add_player(self, player):
         """add_player if not already in lineup"""
         if player not in self:
             self.append(player)
         else:
-            raise LineupError("%s already in lineup" % player.name)
+            raise LineupError("{} already in lineup: {}".format(player.name, str(self)))
 
     def update_player(self, player):
         """add_player.
@@ -67,9 +100,8 @@ class PlayerList(list):
             self.append(player)
         else:
             replace_index = my_player_numbers.index(player.number)
-            self[replace_index] = player
-#        else:
-#            raise LineupError("%s already in lineup" % name)
+            current_player = self[replace_index]
+            current_player.merge(player)
 
     def find_player_by_name(self, name):
         for p in self:
