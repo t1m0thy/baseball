@@ -14,7 +14,7 @@ def setupRootLogger(level):
     try:
         intlevel = int(level)
     except ValueError:
-        intlevel = LOOKUP_LEVEL(level)
+        intlevel = LOOKUP_LEVEL[level]
     console = logging.StreamHandler()
     console.setLevel(intlevel)
     # set a format which is simpler for console use
@@ -24,5 +24,5 @@ def setupRootLogger(level):
     # add the handler to the root logger
     root = logging.getLogger()
     root.addHandler(console)
-    root.setLevel(level)
+    root.setLevel(intlevel)
     return root
