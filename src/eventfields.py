@@ -14,6 +14,11 @@ and making all characters lowercase
 any paranthetical comments from description are converted to comments here
 
 see utility functions at bottom of file
+
+NOTES:
+the above chadwich side says hit value is H_FL.  
+This has been changed to H_CD to match MLB example database.
+
 """
 cw_event_fields = [('0', 'Game ID', 'GAME_ID'),
  ('1', 'Visiting team', 'AWAY_TEAM_ID'),
@@ -52,7 +57,7 @@ cw_event_fields = [('0', 'Game ID', 'GAME_ID'),
  ('34', 'Event type', 'EVENT_CD'),
  ('35', 'Batter event flag', 'BAT_EVENT_FL'),
  ('36', 'Official time at bat flag', 'AB_FL'),
- ('37', 'Hit value', 'H_FL'),
+ ('37', 'Hit value', 'H_CD'),  #This was changed from H_FL (from docs) to match MLB example  
  ('38', 'Sacrifice hit flag', 'SH_FL'),
  ('39', 'Sacrifice fly flag', 'SF_FL'),
  ('40', 'Outs on play', 'EVENT_OUTS_CT'),
