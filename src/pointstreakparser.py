@@ -55,7 +55,6 @@ class PointStreakParser:
         #======================================================================
         # PITCHING
         #======================================================================
-        # TODO:
         pickoff_attempt = (pp.Keyword("Pickoff attempt at") +
                            pp.OneOrMore(pp.Word(pp.alphanums)).setResultsName(constants.PARSING.BASE) +
                             left_paren +

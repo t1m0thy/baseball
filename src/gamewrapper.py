@@ -109,7 +109,7 @@ class GameWrapper:
         base = 4
         self._advance(player_name, base, description, earned)
 
-    def _advance(self, player_name, base, description,earned=True):
+    def _advance(self, player_name, base, description, earned=True):
         if constants.PARSE_ADVANCE.STOLEN_BASE in description:
             self._game.advance_on_stolen_base(player_name, base)
         elif constants.PARSE_ADVANCE.WILD_PITCH in description:
