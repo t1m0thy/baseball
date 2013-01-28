@@ -13,6 +13,7 @@ import constants
 from bases import Bases
 from models import event
 import eventfields
+from lineup import LineupError
 
 MODEL_LOOKUP_DICT = eventfields.lookup_dict()
 
@@ -282,7 +283,7 @@ class GameState:
         self.event_text += self._advancing_event_text
         self._last_event = self._get_state_as_event_model()
         self.event_list.append(self._last_event)
-        logger.info(">-- APPEND EVENT --<")
+        logger.debug(">-- APPEND EVENT --<")
         self._apply_pending_base_runner_positions()
         self._reset_flags()
 
@@ -569,7 +570,11 @@ class GameState:
         # take place before we assign the new positions and confirm all positions
         # are accounted for to be performed prior to the first batter
 
-        logger.info("--------- {half} of the {inning}".format(inning=self.inning, half=self.get_half_string()))
+        logger.info("====================== {half} of the {inning} =====================".format(
+                                                                                      inning=self.inning,
+                                                                                      half=self.get_half_string()
+                                                                                      )
+                    )
 
     #------------------------------------------------------------------------------
     # PLAY ERRORS
@@ -587,6 +592,7 @@ class GameState:
         elif self.number_of_errors == 3:
             self.third_error_player = position_code
             self.third_error_type = error_type
+        
 
     #------------------------------------------------------------------------------
     #  PITCHES
@@ -617,6 +623,8 @@ class GameState:
         self.pitch_sequence += constants.PITCH_CHARS.FOUL
         if dropped and (error is not None):
             self.error(error_position, 'F')
+        #TODO: how could I include this FOUL_ERROR?
+        #self.event_type = constants.EVENT_CODE.FOUL_ERROR
         logger.debug("Foul")
 
     def pitch_pickoff_attempt(self, base, thrower_position, catcher_position):
@@ -651,9 +659,9 @@ class GameState:
             self._increment_batting_order()
 
         if self.outs > 3:
-            raise StandardError("Recorded over 3 outs")
+            raise StandardError("Recorded over 3 outs")            
         logger.info("{} Put Out.".format(player_name))
-
+        
     def _credit_putout_to_fielder(self, position_num):
         if self.fielder_with_first_putout is None:
             self.fielder_with_first_putout = position_num
@@ -728,6 +736,7 @@ class GameState:
         self.triple_play_flag = triple_play
         self._credit_fielders_with_out(player_name, fielders)
         self.event_text += "X" + '(' + ''.join([str(p) for p in fielders]) + ')'
+        self.event_type = constants.EVENT_CODE.GENERIC_OUT
         self._out(player_name)
 
     def out_caught_stealing(self, runner_name, fielders, double_play=False):
@@ -744,7 +753,7 @@ class GameState:
 
         if len(self.pitch_sequence) > 0:
             self.pitch_sequence = self.pitch_sequence[:-1] + constants.PITCH_CHARS.A_RUNNER_GOING_ON_THE_PITCH + self.pitch_sequence[-1]
-
+        
         self._out(runner_name)
         if self.event_text == "K":
             self.event_text += "+"
@@ -752,6 +761,7 @@ class GameState:
         else:
             batting_event = False
         self.event_text += 'CS(' + ''.join([str(p) for p in fielders]) + ')'
+        self.event_type = constants.EVENT_CODE.CAUGHT_STEALING
         if not batting_event:
             self._record_event(batting_event=False)
 
@@ -774,6 +784,7 @@ class GameState:
 
         self._out(runner_name)
         self.event_text += 'PO(' + ''.join([str(p) for p in fielders]) + ')'
+        self.event_type = constants.EVENT_CODE.PICKOFF
         self._record_event(batting_event=False)
         self.pitch_sequence += constants.PITCH_CHARS.PLAY_NOT_INVOLVING_THE_BATTER
 
@@ -785,7 +796,8 @@ class GameState:
         self._record_any_pending_runner_event()
         self._out(self.batter)
         self.event_text += "K" + ''.join([str(f) for f in fielders])
-
+        self.event_type = constants.EVENT_CODE.STRIKEOUT
+        
     def out_fly_out(self, player_name, fielder_position, sacrifice=False):
         self._record_any_pending_runner_event()
         assert(player_name == self.batter)
@@ -795,6 +807,7 @@ class GameState:
         self._credit_fielders_with_out(player_name, [fielder_position])
         self._out(self.batter)
         self.event_text += str(fielder_position) + "/F"
+        self.event_type = constants.EVENT_CODE.GENERIC_OUT
         # TODO: KEEP GOING ON THE EVENT_STRING
 
     def out_strike_out(self, player_name, swinging=False):
@@ -805,6 +818,7 @@ class GameState:
         self._out(self.batter)
         logger.debug("Strike out for {outs} outs".format(outs=self.outs))
         self.event_text += "K"
+        self.event_type = constants.EVENT_CODE.STRIKEOUT
 
     def out_unassisted(self, player_name, fielder_position, foul=False, double_play=False):
         self._record_any_pending_runner_event()
@@ -816,7 +830,7 @@ class GameState:
         fielder_position = self.lookup_position_num(fielder_position)
         self._credit_fielders_with_out(player_name, [fielder_position])
         self.event_text += str(fielder_position)  #TODO: does unassisted have a modifier?
-
+        self.event_type = constants.EVENT_CODE.GENERIC_OUT
         logger.debug("Unassisted out for {outs} outs".format(outs=self.outs))
 
     def out_popup(self, player_name, fielder_position, foul=False, sacrifice=False):
@@ -828,6 +842,7 @@ class GameState:
         fielder_position = self.lookup_position_num(fielder_position)
         self._credit_fielders_with_out(player_name, [fielder_position])
         self.event_text += str(fielder_position) + "/P"
+        self.event_type = constants.EVENT_CODE.GENERIC_OUT
         logger.debug("Unassisted out for {outs} outs".format(outs=self.outs))
 
     #------------------------------------------------------------------------------
@@ -841,6 +856,7 @@ class GameState:
         if location is not None:
             self.hit_location = self.lookup_position_num(location)
         self.event_text += 'S' + str(self.hit_location)
+        self.event_type = constants.EVENT_CODE.SINGLE
         self._advance_player(player_name, 1)
         self.hit_value = 1
 
@@ -851,6 +867,7 @@ class GameState:
         if location is not None:
             self.hit_location = self.lookup_position_num(location)
         self.event_text += 'D' + str(self.hit_location)
+        self.event_type = constants.EVENT_CODE.DOUBLE
         self._advance_player(player_name, 2)
         self.hit_value = 2
 
@@ -861,6 +878,7 @@ class GameState:
         if location is not None:
             self.hit_location = self.lookup_position_num(location)
         self.event_text += 'T' + str(self.hit_location)
+        self.event_type = constants.EVENT_CODE.TRIPLE
         self._advance_player(player_name, 3)
         self.hit_value = 3
 
@@ -871,6 +889,7 @@ class GameState:
         if location is not None:
             self.hit_location = self.lookup_position_num(location)
         self.event_text += 'HR' + str(self.hit_location)
+        self.event_type = constants.EVENT_CODE.HOME_RUN
         self._advance_player(player_name, 4)
         self.hit_value = 4
 
@@ -879,7 +898,7 @@ class GameState:
         if self.event_text != "WP":
             self.event_text += "WP"
             self.pitch_sequence += constants.PITCH_CHARS.PLAY_NOT_INVOLVING_THE_BATTER
-
+        self.event_type = constants.EVENT_CODE.WILD_PITCH
         self._advance_player(player_name, base)
         #self._record_event(batting_event = False)
         self._pending_runner_event = True
@@ -889,6 +908,7 @@ class GameState:
         if self.event_text != "PB":
             self.event_text += "PB"
             self.pitch_sequence += constants.PITCH_CHARS.PLAY_NOT_INVOLVING_THE_BATTER
+        self.event_type = constants.EVENT_CODE.PASSED_BALL
         self._advance_player(player_name, base)
         #self._record_event(batting_event = False)
         self._pending_runner_event = True
@@ -905,6 +925,7 @@ class GameState:
             self.pitch_sequence = self.pitch_sequence[:-1] + constants.PITCH_CHARS.A_RUNNER_GOING_ON_THE_PITCH + self.pitch_sequence[-1]
         if self.event_text != "SB":
             self.event_text += "SB" + str(constants.BASE_LOOKUP[base])
+        self.event_type = constants.EVENT_CODE.STOLEN_BASE
         self._advance_player(player_name, base, earned=False)
         #self._record_event(batting_event=False)
         self._pending_runner_event = True
@@ -927,6 +948,7 @@ class GameState:
             self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         self.error(error_position, error_type)
         self.event_text += 'E' + str(self.lookup_position_num(error_position))
+        self.event_type = constants.EVENT_CODE.ERROR
         self._advance_player(player_name, base)
 
     def advance_on_fielders_choice(self, player_name, base):
@@ -934,6 +956,7 @@ class GameState:
         if player_name == self.batter:
             self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         self.event_text += 'FC'
+        self.event_type = constants.EVENT_CODE.FIELDERS_CHOICE
         self._advance_player(player_name, base)
 
     def advance_on_ground_rule(self, player_name, base):
@@ -942,12 +965,14 @@ class GameState:
         if player_name == self.batter:
             self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         self.event_text += 'DGR'
+        self.event_type = constants.EVENT_CODE.DOUBLE
         self._advance_player(player_name, base)
 
     def advance_on_hit_by_pitch(self, player_name):
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.HIT_BATTER
         self.event_text += 'HP'
+        self.event_type = constants.EVENT_CODE.HIT_BY_PITCH
         self._advance_player(player_name, 1)
 
     def advance_on_walk(self, player_name, intentional=False):
@@ -955,9 +980,11 @@ class GameState:
         self.pitch_sequence += constants.PITCH_CHARS.BALL
         if intentional:
             self.pitch_sequence.replace(constants.PITCH_CHARS.BALL, constants.PITCH_CHARS.INTENTIONAL_BALL)
-            self.event_text += 'HP'
+            self.event_text += 'IW'
+            self.event_type = constants.EVENT_CODE.INTENTIONAL_WALK
         else:
             self.event_text += 'W'
+            self.event_type = constants.EVENT_CODE.WALK
         self._advance_player(player_name, 1)
 
     def advance_from_batter(self, player_name, base, batter_number):
@@ -1035,7 +1062,7 @@ class GameState:
 
     def defensive_sub(self, new_player_name, replacing_name, position=''):
         # "moves to" or "subs at" Case
-        logging.info("DEFENSIVE SUB -- " + new_player_name + replacing_name + position)
+        logging.info("DEFENSIVE SUB -- {} for {} at {}".format(new_player_name, replacing_name, position))
         if replacing_name == '':
             if position == '':
                 raise StandardError("Defensive Sub Error, no new position or replacement name")
@@ -1069,7 +1096,12 @@ class GameState:
                 new_player.order = possible_remove_player.order
                 #assert (possible_remove_player.position == 'P')
                 #possible_remove_player.order = None
-            self._current_fielding_lineup().add_player(new_player)
+            try:
+                self._current_fielding_lineup().add_player(new_player)
+            except LineupError:
+                existing_player = self._current_fielding_roster().find_player_by_name(new_player.name)
+                existing_player.merge(new_player)
+                logger.warn("{} already in lineup.  diffs => {}".format(new_player.name, existing_player.diff(new_player)))
         #self._update_fielders()
 
     def offensive_sub(self, new_player_name, replacing_name, pinch_runner=False, base=None):
@@ -1078,6 +1110,8 @@ class GameState:
         self._current_batting_lineup().add_player(new_player)
 
         if pinch_runner:
+            logging.info("OFFENSIVE SUB -- {} running for {} at {}".format(new_player_name, replacing_name, base))
+
             base_num = constants.BASE_LOOKUP[base]
             # 1. assert that we are replacing the right guy
             # 2. set the pinch runner flag to true (I checked MLB data, and this flag is True only for
@@ -1101,6 +1135,7 @@ class GameState:
                 self.runner_removed_for_pinch_runner_on_third = removed_player.name
 
         else:
+            logging.info("offensive sub -- {} hitting for {}".format(new_player_name, replacing_name))
             self._next_batter_pinch = True
 
         new_player.position = None  #TODO: make sure these guys get a position before they field
