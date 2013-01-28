@@ -316,8 +316,10 @@ class GameState:
     def _update_fielders(self):
         fielder_pos_dict = self.fielding_lineup.position_dict()
         self.pitcher = fielder_pos_dict['P']
+        self.result_pitcher = self.pitcher
         player_pitcher = self.fielding_lineup.find_player_by_name(self.pitcher)
         self.pitcher_hand = player_pitcher.hand
+        self.result_pitcher_hand = self.pitcher_hand
         self.catcher = fielder_pos_dict['C']
         self.first_baseman = fielder_pos_dict['1B']
         self.second_baseman = fielder_pos_dict['2B']
@@ -453,6 +455,7 @@ class GameState:
     #------------------------------------------------------------------------------
     def new_batter(self, batter):
         self.batter = batter
+        self.result_batter = batter
         self.balls = 0
         self.strikes = 0
         self.outs_on_play = 0
@@ -527,6 +530,7 @@ class GameState:
         self.defensive_position = batter_player.position
         self.lineup_position = batter_player.order
         self.batter_hand = batter_player.hand
+        self.result_batter_hand = batter_player.hand
         if self._next_batter_leadoff:
             self._next_batter_leadoff = False
             self.leadoff_flag = True
@@ -1102,7 +1106,11 @@ class GameState:
                 existing_player = self._current_fielding_roster().find_player_by_name(new_player.name)
                 existing_player.merge(new_player)
                 logger.warn("{} already in lineup.  diffs => {}".format(new_player.name, existing_player.diff(new_player)))
-        #self._update_fielders()
+        
+        #WARN: this will update the picther and result_pitcher as well.
+        # at this time, the college scoring system does not appear to indicate mid-play 
+        # substitutions that I can detect
+        self._update_fielders()
 
     def offensive_sub(self, new_player_name, replacing_name, pinch_runner=False, base=None):
         removed_player = self._current_batting_lineup().remove_player(replacing_name)
