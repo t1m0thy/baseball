@@ -1,3 +1,4 @@
+import os
 import logging
 logger = logging.getLogger("manager")
 
@@ -11,10 +12,10 @@ from sqlalchemy.orm import sessionmaker
 from models import event
 
 
-def build_game(gameid):
+def import_game(gameid, cache_path=None):
     parser = psp.PointStreakParser()
     # init scraper for this game id
-    scraper = pss.PointStreakScraper(gameid)
+    scraper = pss.PointStreakScraper(gameid, cache_path)
     # create new game state
     game = gamestate.GameState()
     game.home_team_id = scraper.home_team()
@@ -61,10 +62,25 @@ def build_game(gameid):
     game.set_previous_event_as_game_end()
     return game, scraper.review_url()
 
-def init_database():
-    """ initialize database """
+def init_database(use_mysql=False, dbname="smallball"):
+    """ 
+    initialize database 
+    if use_mysql is true, use environment variables to set it up
+    otherwise default to sqlite
+    """
     #engine = create_engine('sqlite:///:memory:', echo=False)
-    engine = create_engine('sqlite:///data.sqlite', echo=False)
+    # "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}"
+    if use_mysql:
+        mysql_setup = "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}".format(
+                         user="grabber",#os.environ.get('DOTCLOUD_DATA_MYSQL_LOGIN'),
+                         password="stitches",#os.environ.get('DOTCLOUD_DATA_MYSQL_PASSWORD'),
+                         host=os.environ.get("DOTCLOUD_DATA_MYSQL_HOST"),
+                         port=os.environ.get("DOTCLOUD_DATA_MYSQL_PORT"),
+                         dbname=dbname
+                        )
+        engine = create_engine(mysql_setup, echo=False)
+    else:
+        engine = create_engine('sqlite:///data.sqlite', echo=False)
     event.Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()

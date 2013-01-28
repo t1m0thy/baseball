@@ -11,12 +11,12 @@ from lineup import Lineup, Player, PlayerList, LineupError
 import constants
 
 BASE_DIR = os.path.dirname(__file__)
-CACHE_PATH = os.path.join(BASE_DIR, "../htmlcache/")
-GAME_CACHE_PATH = CACHE_PATH + "games/game_%s.html"
-GAME_XML_CACHE_PATH = CACHE_PATH + "games/game_%s.xml"
-GAME_XML_SEQ_CACHE_PATH = CACHE_PATH + "games/game_%s_seq_%s.xml"
-PLAYER_CACHE_PATH = CACHE_PATH + "players/player_%s.html"
-LISTINGS_CACHE_PATH = CACHE_PATH + "listings/list_%s.html"
+DEFAULT_CACHE_PATH = os.path.join(BASE_DIR, "../htmlcache/")
+GAME_CACHE_PATH = "games/game_%s.html"
+GAME_XML_CACHE_PATH = "games/game_%s.xml"
+GAME_XML_SEQ_CACHE_PATH = "games/game_%s_seq_%s.xml"
+PLAYER_CACHE_PATH = "players/player_%s.html"
+
 
 logger = logging.getLogger("pointstreak scraper")
 
@@ -24,7 +24,6 @@ PS_GAME_XML = "http://v0.pointstreak.com/baseball/flashapp/getlivegamedata.php?g
 PS_GAME_SEQUENCE_XML = "http://v0.pointstreak.com/baseball/flashapp/getlivegamedata.php?gameid=%s&sequenceid=%s"
 PS_GAME_HTML = "http://www.pointstreak.com/baseball/boxscore.html?gameid=%s"
 PS_2012_CCL_URL = "http://www.pointstreak.com/baseball/schedule.html?leagueid=166&seasonid=12252"
-PS_2012_CCL_PLAYOFF_URL = "http://www.pointstreak.com/baseball/schedule.html?leagueid=166&seasonid=18269"
 PS_2012_CCL_STATS = "http://www.pointstreak.com/baseball/stats.html?leagueid=166&seasonid=18269&view=batting"
 
 PS_PLAYER_URL = "http://www.pointstreak.com/baseball/player.html?playerid=%s"
@@ -44,8 +43,12 @@ class ScrapeError(Exception):
 
 
 class PointStreakScraper(GameScraper):
-    def __init__(self, gameid):
+    def __init__(self, gameid, cache_path=None):
         self.gameid = gameid
+        if cache_path is not None:
+            self._cache_path = cache_path            
+        else:
+            self._cache_path = DEFAULT_CACHE_PATH
         self._home_playerid_by_num = {}
         self._away_playerid_by_num = {}
 
@@ -186,16 +189,16 @@ class PointStreakScraper(GameScraper):
 
     def _get_pointstreak_game_html(self, force_reload=False):
         url = self._get_point_streak_url()
-        cache_filename = GAME_CACHE_PATH % ("PS" + self.gameid)
+        cache_filename = os.path.join(self._cache_path, GAME_CACHE_PATH % ("PS" + self.gameid))
         return get_cached_url(url, cache_filename, force_reload)
 
     def _get_pointstreak_xml(self, seq=None, force_reload=False):
         if seq is None:
             url = PS_GAME_XML % self.gameid
-            cache_filename = GAME_XML_CACHE_PATH % ("PS" + self.gameid)
+            cache_filename = os.path.join(self._cache_path, GAME_XML_CACHE_PATH % ("PS" + self.gameid))
         else:
             url = PS_GAME_SEQUENCE_XML % (self.gameid, seq)
-            cache_filename = GAME_XML_SEQ_CACHE_PATH % (("PS" + self.gameid), seq)
+            cache_filename = os.path.join(self._cache_path, GAME_XML_SEQ_CACHE_PATH % (("PS" + self.gameid), seq))
         return get_cached_url(url, cache_filename, force_reload)
 
     def _make_pitcher(self, is_home, player_dict):
@@ -263,7 +266,8 @@ class PointStreakScraper(GameScraper):
 
     def _player_page_from_id(self, player_id):
         """ return point streak html from a player id """
-        return get_cached_url(self._player_url_from_id(player_id), PLAYER_CACHE_PATH % ("PS" + str(player_id)))
+        player_cache_path = os.path.join(self._cache_path, PLAYER_CACHE_PATH % ("PS" + str(player_id)))
+        return get_cached_url(self._player_url_from_id(player_id), player_cache_path)
         
     def _update_handedness(self, is_home, player_list):
         for player in player_list:
