@@ -19,6 +19,9 @@ class PointStreakParser:
         self.event_cache = []
         self.gamewrap.set_game(game)
 
+    def make_lower(self, text, location, tokens):
+        return text.lower()
+        
     def setup_parser(self):
         #===========================================================================
         # General Parser Items
@@ -28,8 +31,12 @@ class PointStreakParser:
         left_paren = pp.Literal('(').suppress()
         right_paren = pp.Literal(')').suppress()
         period = pp.Literal('.').suppress()
-
-        player_no_num = pp.Word(pp.alphas + '.') + (pp.Optional(pp.Keyword('St.')) + pp.Word(pp.alphas))
+        name_prefix = pp.Keyword('St.')
+        name_suffix = pp.Keyword("jr", caseless=True) | \
+                        pp.Keyword("sr", caseless=True)
+        
+        
+        player_no_num = pp.Word(pp.alphas + '.'+'-') + pp.Optional(name_prefix) + pp.Word(pp.alphas+'-') + pp.Optional(name_suffix)
         player = (pp.Word(pp.nums).setResultsName(constants.PARSING_PLAYER.NUMBER) + player_no_num.setResultsName(constants.PARSING_PLAYER.NAME)).setResultsName(constants.PARSING.PLAYER)
 
         position = pp.Keyword("Pitcher", caseless=True) | \
@@ -135,6 +142,7 @@ class PointStreakParser:
                   pp.Optional(hit_location)
                   ).setResultsName(constants.PARSE_ADVANCE.HOME_RUN)
 
+        dropped_third_strike = pp.Keyword("dropped 3rd strike", caseless=True).setResultsName(constants.PARSE_ADVANCE.DROPPED_THIRD_STRIKE)
         fielders_choice = pp.Keyword("fielder's choice", caseless=True).setResultsName(constants.PARSE_ADVANCE.FIELDERS_CHOICE)
         hit_by_pitch = pp.Keyword("hit by pitch", caseless=True).setResultsName(constants.PARSE_ADVANCE.HIT_BY_PITCH)
         walk = pp.Keyword("walk", caseless=True).setResultsName(constants.PARSE_ADVANCE.WALK)
@@ -144,7 +152,8 @@ class PointStreakParser:
                 (pp.Optional(pp.Keyword("SAC", caseless=True)) + pp.Optional(pp.Word(pp.nums)) +
                  pp.CaselessLiteral("e") +
                  pp.oneOf("1 2 3 4 5 6 7 8 9").setResultsName(constants.PARSING.POSITION) +
-                 pp.Optional(pp.CaselessLiteral("F") | pp.CaselessLiteral("T")).setResultsName(constants.PARSING.ERROR_TYPE) +
+                 # Fielder ERror, Throwing Error, Muffed (poorly caught between fielders)
+                 pp.Optional(pp.CaselessLiteral("F") | pp.CaselessLiteral("T") | pp.CaselessLiteral("M") ).setResultsName(constants.PARSING.ERROR_TYPE) +
                  pp.Optional(pp.Word(pp.nums))
                 )
                 ).setResultsName(constants.PARSING.ERROR)
@@ -154,9 +163,10 @@ class PointStreakParser:
                        ).setResultsName(constants.PARSE_ADVANCE.GROUND_RULE)
         throw = (pp.Literal("T") + pp.Word(pp.nums)).setResultsName(constants.PARSE_ADVANCE.THROW)
         intentional_walk = pp.Keyword("intentional walk", caseless=True).setResultsName(constants.PARSE_ADVANCE.INTENTIONAL_WALK)
-        advance_desc = left_paren + (wild_pitch | single | double | triple | home_run | \
+        unknown = pp.OneOrMore(pp.Word(pp.alphanums)).setResultsName(constants.PARSE_ADVANCE.UNKNOWN)
+        advance_desc = left_paren + (wild_pitch | single | double | triple | home_run | dropped_third_strike | \
                                        fielders_choice | hit_by_pitch | throw | walk | stolen_base | \
-                                       error | player_num | pass_ball | ground_rule | intentional_walk
+                                       error | player_num | pass_ball | ground_rule | intentional_walk | unknown
                                        ) + right_paren
         advances = (player +
                     pp.Keyword("advances to", caseless=True) +
