@@ -64,7 +64,7 @@ class GameState:
         self.event_type = None  #TODO: implement event_type
 
         self.batter_event_flag = False  # True in near all cases except recording stolen bases or caught stealing events
-        self.official_time_at_bat_flag = False  # True unless there was a running event
+        self.official_time_at_bat_flag = False  # true for plate appearance that don't show (BB, HBP, SF, SH, interferance, obstruction)
         self.hit_value = 0
 
         self.sacrifice_hit_flag = False
@@ -280,6 +280,9 @@ class GameState:
 
         self._record_any_pending_runner_event()
         self.batter_event_flag = batting_event
+        if batting_event:
+            self.official_time_at_bat_flag = self._batting_event_is_official
+
         self.event_text += self._advancing_event_text
         self._last_event = self._get_state_as_event_model()
         self.event_list.append(self._last_event)
@@ -443,6 +446,9 @@ class GameState:
         else:
             return "Top"
 
+    def inning_string(self):
+        return "Game {}: {} of the {}".format(self.game_id, self.get_half_string(), self.inning)
+
     def lookup_position(self, pos):
         """
         return position character code ie. P, C, 1B, 2B ... CF
@@ -459,6 +465,9 @@ class GameState:
     #  NEW CALLS
     #------------------------------------------------------------------------------
     def new_batter(self, batter):
+        if batter == self.batter:
+            logger.warning("Same batter twice: {}.  game {} {} of the {}".format(batter, self.game_id, self.get_half_string(), self.inning))
+            return
         self.batter = batter
         self.result_batter = batter
         self.balls = 0
@@ -490,7 +499,8 @@ class GameState:
         self.third_error_player = None
         self.third_error_type = None
         self.batter_event_flag = False  # set this to False for any events sent to database before event is complete
-
+        self.official_time_at_bat_flag = False
+        self._batting_event_is_official = True # this is guilty until proven innocent
         logger.info("-> %s to bat" % batter)
 
         # If this the first batter in a new half, swap the lineups
@@ -747,6 +757,8 @@ class GameState:
         self.event_text += "X" + '(' + ''.join([str(p) for p in fielders]) + ')'
         self.event_type = constants.EVENT_CODE.GENERIC_OUT
         self._out(player_name)
+        if sacrifice:
+            self._batting_event_is_official = False
 
     def out_caught_stealing(self, runner_name, fielders, double_play=False):
         self._record_any_pending_runner_event()
@@ -809,7 +821,10 @@ class GameState:
         
     def out_fly_out(self, player_name, fielder_position, sacrifice=False):
         self._record_any_pending_runner_event()
-        assert(player_name == self.batter)
+        if player_name != self.batter:
+            raise StandardError("{}\nFly out player {} who is not current batter {}".format(self.inning_string(), 
+                                                                                        player_name, 
+                                                                                        self.batter))
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         self.sacrifice_fly_flag = sacrifice
         fielder_position = self.lookup_position_num(fielder_position)
@@ -817,12 +832,17 @@ class GameState:
         self._out(self.batter)
         self.event_text += str(fielder_position) + "/F"
         self.event_type = constants.EVENT_CODE.GENERIC_OUT
+        if sacrifice:
+            self._batting_event_is_official = False
         # TODO: KEEP GOING ON THE EVENT_STRING
 
     def out_strike_out(self, player_name, swinging=False):
         self._record_any_pending_runner_event()
         """ strike out current batter, swinging is True or False (for looking)"""
-        assert(player_name == self.batter)
+        if player_name != self.batter:
+            raise StandardError("{}\nStrike Out player {} who is not current batter {}".format(self.inning_string(),
+                                                                                       player_name, 
+                                                                                       self.batter))
         self._credit_fielders_with_out(player_name, [2])
         self._out(self.batter)
         logger.debug("Strike out for {outs} outs".format(outs=self.outs))
@@ -844,7 +864,11 @@ class GameState:
 
     def out_popup(self, player_name, fielder_position, foul=False, sacrifice=False):
         self._record_any_pending_runner_event()
-        assert(player_name == self.batter)
+        if player_name != self.batter:
+            raise StandardError("{}\nPopup Out player {} who is not current batter {}".format(self.inning_string(),
+                                                                                          player_name,
+                                                                                          self.batter))
+
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         self.foul_flag = foul
         self._out(self.batter)
@@ -852,6 +876,8 @@ class GameState:
         self._credit_fielders_with_out(player_name, [fielder_position])
         self.event_text += str(fielder_position) + "/P"
         self.event_type = constants.EVENT_CODE.GENERIC_OUT
+        if sacrifice:
+            self._batting_event_is_official = False
         logger.debug("Unassisted out for {outs} outs".format(outs=self.outs))
 
     #------------------------------------------------------------------------------
@@ -859,7 +885,7 @@ class GameState:
     #------------------------------------------------------------------------------
 
     def hit_single(self, player_name, location=None):
-        assert(self.batter == player_name)
+        assert(player_name == self.batter)
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         if location is not None:
@@ -870,7 +896,7 @@ class GameState:
         self.hit_value = 1
 
     def hit_double(self, player_name, location=None):
-        assert(self.batter == player_name)
+        assert(player_name == self.batter)
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         if location is not None:
@@ -881,7 +907,7 @@ class GameState:
         self.hit_value = 2
 
     def hit_triple(self, player_name, location=None):
-        assert(self.batter == player_name)
+        assert(player_name == self.batter)
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         if location is not None:
@@ -892,7 +918,7 @@ class GameState:
         self.hit_value = 3
 
     def hit_home_run(self, player_name, location=None):
-        assert(self.batter == player_name)
+        assert(player_name == self.batter)
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         if location is not None:
@@ -983,6 +1009,7 @@ class GameState:
         self.event_text += 'HP'
         self.event_type = constants.EVENT_CODE.HIT_BY_PITCH
         self._advance_player(player_name, 1)
+        self._batting_event_is_official = False
 
     def advance_on_walk(self, player_name, intentional=False):
         self._record_any_pending_runner_event()
@@ -995,6 +1022,14 @@ class GameState:
             self.event_text += 'W'
             self.event_type = constants.EVENT_CODE.WALK
         self._advance_player(player_name, 1)
+        self._batting_event_is_official = False
+        
+    def advance_on_dropped_third_strike(self, player_name):
+        assert(player_name == self.batter)
+        self.pitch_sequence += constants.PITCH_CHARS.STRIKE_UNKNOWN_TYPE
+        self.event_text += 'KPB'
+        self.event_type = constants.EVENT_CODE.STRIKEOUT
+        self._advance_player(player_name, 1)
 
     def advance_from_batter(self, player_name, base, batter_number):
         self._record_any_pending_runner_event()
@@ -1002,6 +1037,20 @@ class GameState:
         if batter_number != current_batter.number:
             logger.warning("Advance recorded from batter number {} that is not current batter {}".format(batter_number, self.batter))
         self._advance_player(player_name, base)
+
+    def advance_from_interference(self, player_name, position=None):
+        if player_name != self.batter:
+            raise StandardError("{}\nAdvance from Interference player {} who is not current batter {}".format(self.self.inning_string(),
+                                                                                                          player_name, 
+                                                                                                          self.batter))
+
+        self._advance_player(player_name, 1)
+        if position is not None:
+            self.event_text += 'C/E' + str(self.lookup_position_num(position))
+        else:
+            self.event_text += 'C'
+        self.event_type = constants.EVENT_CODE.INTERFERENCE
+        self._batting_event_is_official = False
 
     def base_string(self):
         return "B: {}, 1: {}, 2: {}, 3: {}".format(self.batter,
@@ -1013,13 +1062,16 @@ class GameState:
     def _advance_player(self, player_name, base, earned=True):
         """
         advance runners to a base
-
+        
+        earned applies only to advances to home
+        
         TODO: break this into 3 specific methods to advance a runner to a specific base
         This will make it easier to use this method with whatever parsing means we need
         """
         base_num = constants.BASE_LOOKUP[base]
         logger.info("%s to %s" % (player_name, base_num))
 
+        
         if base_num == 4 and not earned:
             destination_base_name = 5
             #TODO: add special case of earned by pitcher unearned by batting team = 6
@@ -1038,7 +1090,7 @@ class GameState:
         #TODO: confirm we want to use the result_pitcher here with the pitcher charged
         advance_string = self._bases.advance(player_name, base_num)
         if advance_string.startswith("B"):
-            if self.batter != player_name:
+            if player_name != self.batter:
                 logger.warning("Player {} neither batter nor found on bases for advance to {}".format(player_name, base))
                 raise StandardError("Lost Player")
         self._advancing_event_text += '.' + advance_string
@@ -1112,10 +1164,40 @@ class GameState:
                 existing_player.merge(new_player)
                 logger.warn("{} already in lineup.  diffs => {}".format(new_player.name, existing_player.diff(new_player)))
         
-        #WARN: this will update the picther and result_pitcher as well.
+
+        self._update_position_attributes_with_player( self._current_fielding_roster().find_player_by_name(new_player_name))
+
+    def _update_position_attributes_with_player(self, new_player, responsible_pitcher = True):
+        """
+        Update the position attributes for this new player
+        
+        #WARN: this will update the pitcher and result_pitcher as well.
         # at this time, the college scoring system does not appear to indicate mid-play 
         # substitutions that I can detect
-        self._update_fielders()
+        """
+        if new_player.position == 'P':
+            self.pitcher = new_player.name
+            self.pitcher_hand = new_player.hand
+            if responsible_pitcher:
+                self.result_pitcher = new_player.name 
+                self.result_pitcher_hand = self.pitcher_hand
+        elif new_player.position == 'C':
+            self.catcher = new_player.name
+        elif new_player.position == '1B':
+            self.first_baseman = new_player.name
+        elif new_player.position == '2B':
+            self.second_baseman = new_player.name
+        elif new_player.position == '3B':
+            self.third_baseman = new_player.name
+        elif new_player.position == 'SS':
+            self.shortstop = new_player.name
+        elif new_player.position == 'LF':
+            self.left_fielder = new_player.name
+        elif new_player.position == 'CF':
+            self.center_fielder = new_player.name
+        elif new_player.position == 'RF':
+            self.right_fielder = new_player.name        
+        
 
     def offensive_sub(self, new_player_name, replacing_name, pinch_runner=False, base=None):
         removed_player = self._current_batting_lineup().remove_player(replacing_name)
