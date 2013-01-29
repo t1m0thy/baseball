@@ -77,7 +77,9 @@ class GameWrapper:
                                  position,
                                  constants.PARSING_OUTS.FOUL in description)
         else:
-            raise StandardError("Parsing Error from unknown putout description: " + ' '.join(tokens))
+            logger.error("Unknown Putout Description" + str(description))
+            self._game._out(player_name)
+            #raise StandardError("Parsing Error from unknown putout description: " + ' '.join(tokens))
 
     def parse_offensive_sub(self, text, location, tokens):
         new_player_name = ' '.join(tokens[constants.PARSING.NEW_PLAYER][1:])
@@ -141,11 +143,14 @@ class GameWrapper:
             self._game.advance_on_walk(player_name, intentional=True)
         elif constants.PARSE_ADVANCE.WALK in description:
             self._game.advance_on_walk(player_name, intentional=False)
+        elif constants.PARSE_ADVANCE.DROPPED_THIRD_STRIKE in description:
+            self._game.advance_on_dropped_third_strike(player_name)
         elif constants.PARSE_ADVANCE.PLAYER_NUM in description:
             batter_number = description.get(constants.PARSE_ADVANCE.PLAYER_NUM, None)
             self._game.advance_from_batter(player_name, base, batter_number)
         else:
-            logger.error("Unknown Description" + str(description))
+            #raise StandardError("Parsing Error from unknown Advance description: " + ' '.join(description))
+            logger.error("Unknown Advance Description" + str(description))
             self._game._advance_player(player_name, base, earned)
 
     def event_complete(self, *args):
