@@ -22,10 +22,7 @@ class Player:
         except AttributeError:
             pass
         self.name = name
-        try:
-            self.number = int(number)
-        except TypeError:
-            self.number = None
+        self.number = number
         try:
             self.order = int(order)
         except TypeError:
@@ -158,7 +155,7 @@ class PlayerList(list):
 
     def find_player_by_number(self, number):
         for p in self:
-            if int(p.number) == int(number):
+            if str(p.number) == str(number):
                 return p
         raise KeyError("No player found with number %s" % number)
 

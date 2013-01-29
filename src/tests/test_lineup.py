@@ -61,7 +61,7 @@ class TestCaseComplete(unittest.TestCase):
         self.lineup.add_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
         self.lineup.add_player(Player("Dwight Evans", 24, 2, "RF", RIGHT))
         self.lineup.add_player(Player("Jim Rice", 14, 3, "LF", RIGHT))
-        self.lineup.add_player(Player("Mike Easler", 7, 4, "DH", LEFT))
+        self.lineup.add_player(Player("Mike Easler", 'X', 4, "DH", LEFT)) # test numberless 'X'
         self.lineup.add_player(Player("Tony Armas", 20, 5, "CF", RIGHT))
         self.lineup.add_player(Player("Bill Buckner", 6, 6, "1B", LEFT))
         self.lineup.add_player(Player("Rich Gedman", 10, 7, "C", LEFT))
