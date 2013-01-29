@@ -388,6 +388,11 @@ class GameState:
         self.runner_removed_for_pinch_runner_on_second = False
         self.runner_removed_for_pinch_runner_on_third = False
 
+        self.play_on_batter = None
+        self.play_on_runner_on_first = None
+        self.play_on_runner_on_second = None
+        self.play_on_runner_on_third = None
+            
         self.fielder_with_first_putout = None
         self.fielder_with_second_putout = None
         self.fielder_with_third_putout = None
