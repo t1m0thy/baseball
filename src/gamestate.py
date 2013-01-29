@@ -671,10 +671,10 @@ class GameState:
         self.outs += 1
         self.outs_on_play += 1
 
-        if player_name != self.batter:
+        if self.batter != player_name:
             self._bases.remove(player_name)
 
-        if player_name == self.batter:
+        if self.batter == player_name:
             self._increment_batting_order()
 
         if self.outs > 3:
@@ -722,7 +722,7 @@ class GameState:
         fielders = [self.lookup_position_num(pos) for pos in fielders]
         self.fielded_by = fielders[0]
         play_string = ''.join([str(p) for p in fielders[-2:]])
-        if player_name == self.batter:
+        if self.batter == player_name:
             self.play_on_batter = play_string
         elif player_name == self.runner_on_first:
             self.play_on_runner_on_first = play_string
@@ -748,7 +748,7 @@ class GameState:
         """
 
         self._record_any_pending_runner_event()
-        if player_name == self.batter:
+        if self.batter == player_name:
             self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         self.sacrifice_hit_flag = sacrifice
         self.double_play_flag = double_play
@@ -821,7 +821,7 @@ class GameState:
         
     def out_fly_out(self, player_name, fielder_position, sacrifice=False):
         self._record_any_pending_runner_event()
-        if player_name != self.batter:
+        if self.batter != player_name:
             raise StandardError("{}\nFly out player {} who is not current batter {}".format(self.inning_string(), 
                                                                                         player_name, 
                                                                                         self.batter))
@@ -839,7 +839,7 @@ class GameState:
     def out_strike_out(self, player_name, swinging=False):
         self._record_any_pending_runner_event()
         """ strike out current batter, swinging is True or False (for looking)"""
-        if player_name != self.batter:
+        if self.batter != player_name:
             raise StandardError("{}\nStrike Out player {} who is not current batter {}".format(self.inning_string(),
                                                                                        player_name, 
                                                                                        self.batter))
@@ -851,7 +851,7 @@ class GameState:
 
     def out_unassisted(self, player_name, fielder_position, foul=False, double_play=False):
         self._record_any_pending_runner_event()
-        if player_name == self.batter:
+        if self.batter == player_name:
             self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         self._out(player_name)
         self.double_play_flag = double_play
@@ -864,7 +864,7 @@ class GameState:
 
     def out_popup(self, player_name, fielder_position, foul=False, sacrifice=False):
         self._record_any_pending_runner_event()
-        if player_name != self.batter:
+        if self.batter != player_name:
             raise StandardError("{}\nPopup Out player {} who is not current batter {}".format(self.inning_string(),
                                                                                           player_name,
                                                                                           self.batter))
@@ -979,7 +979,7 @@ class GameState:
 
     def advance_on_error(self, player_name, base, error_position, error_type):
         self._record_any_pending_runner_event()
-        if player_name == self.batter:
+        if self.batter == player_name:
             self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         self.error(error_position, error_type)
         self.event_text += 'E' + str(self.lookup_position_num(error_position))
@@ -988,7 +988,7 @@ class GameState:
 
     def advance_on_fielders_choice(self, player_name, base):
         self._record_any_pending_runner_event()
-        if player_name == self.batter:
+        if self.batter == player_name:
             self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         self.event_text += 'FC'
         self.event_type = constants.EVENT_CODE.FIELDERS_CHOICE
@@ -997,7 +997,7 @@ class GameState:
     def advance_on_ground_rule(self, player_name, base):
         """Ground Rule Double"""
         self._record_any_pending_runner_event()
-        if player_name == self.batter:
+        if self.batter == player_name:
             self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         self.event_text += 'DGR'
         self.event_type = constants.EVENT_CODE.DOUBLE
@@ -1039,7 +1039,7 @@ class GameState:
         self._advance_player(player_name, base)
 
     def advance_from_interference(self, player_name, position=None):
-        if player_name != self.batter:
+        if self.batter != player_name:
             raise StandardError("{}\nAdvance from Interference player {} who is not current batter {}".format(self.self.inning_string(),
                                                                                                           player_name, 
                                                                                                           self.batter))
@@ -1078,7 +1078,7 @@ class GameState:
         else:
             destination_base_name = base_num
 
-        if player_name == self.batter:
+        if self.batter == player_name:
             self.batter_destination = destination_base_name
         elif player_name == self.runner_on_first:
             self.runner_on_first_destination = destination_base_name
@@ -1090,7 +1090,7 @@ class GameState:
         #TODO: confirm we want to use the result_pitcher here with the pitcher charged
         advance_string = self._bases.advance(player_name, base_num)
         if advance_string.startswith("B"):
-            if player_name != self.batter:
+            if self.batter != player_name:
                 logger.warning("Player {} neither batter nor found on bases for advance to {}".format(player_name, base))
                 raise StandardError("Lost Player")
         self._advancing_event_text += '.' + advance_string
@@ -1104,7 +1104,7 @@ class GameState:
         elif base_num == 4:
             self._score(earned)
         #logger.debug("runners now 1st %s, 2nd %s, 3rd, %s" % (self.runner_on_first, self.runner_on_second, self.runner_on_third))
-        if player_name == self.batter:
+        if self.batter == player_name:
             self._increment_batting_order()
 
     def _score(self, earned):
