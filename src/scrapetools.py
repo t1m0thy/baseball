@@ -8,7 +8,7 @@ logger = logging.getLogger("scrapetools")
 
 def ungzipResponse(r, br):
     headers = r.info()
-    if headers['Content-Encoding'] == 'gzip':
+    if headers.get('Content-Encoding') == 'gzip':
         gz = gzip.GzipFile(fileobj=r, mode='rb')
         html = gz.read()
         gz.close()
