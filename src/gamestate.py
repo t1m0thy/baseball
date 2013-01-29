@@ -468,8 +468,6 @@ class GameState:
         if batter == self.batter:
             logger.warning("Same batter twice: {}.  game {} {} of the {}".format(batter, self.game_id, self.get_half_string(), self.inning))
             return
-        self.batter = batter
-        self.result_batter = batter
         self.balls = 0
         self.strikes = 0
         self.outs_on_play = 0
@@ -542,6 +540,9 @@ class GameState:
                     raise
             else:
                 raise
+        self.batter = batter_player.name
+        self.result_batter = batter_player.name
+
         self.defensive_position = batter_player.position
         self.lineup_position = batter_player.order
         self.batter_hand = batter_player.hand
@@ -724,11 +725,11 @@ class GameState:
         play_string = ''.join([str(p) for p in fielders[-2:]])
         if self.batter == player_name:
             self.play_on_batter = play_string
-        elif player_name == self.runner_on_first:
+        elif self.runner_on_first == player_name:
             self.play_on_runner_on_first = play_string
-        elif player_name == self.runner_on_second:
+        elif self.runner_on_second == player_name:
             self.play_on_runner_on_second = play_string
-        elif player_name == self.runner_on_third:
+        elif self.runner_on_third == player_name:
             self.play_on_runner_on_third = play_string
 
         # credit the final fielder in the list with the out
@@ -885,7 +886,7 @@ class GameState:
     #------------------------------------------------------------------------------
 
     def hit_single(self, player_name, location=None):
-        assert(player_name == self.batter)
+        assert(self.batter == player_name)
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         if location is not None:
@@ -896,7 +897,7 @@ class GameState:
         self.hit_value = 1
 
     def hit_double(self, player_name, location=None):
-        assert(player_name == self.batter)
+        assert(self.batter == player_name)
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         if location is not None:
@@ -907,7 +908,7 @@ class GameState:
         self.hit_value = 2
 
     def hit_triple(self, player_name, location=None):
-        assert(player_name == self.batter)
+        assert(self.batter == player_name)
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         if location is not None:
@@ -918,7 +919,7 @@ class GameState:
         self.hit_value = 3
 
     def hit_home_run(self, player_name, location=None):
-        assert(player_name == self.batter)
+        assert(self.batter == player_name)
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         if location is not None:
@@ -949,11 +950,11 @@ class GameState:
         self._pending_runner_event = True
 
     def advance_on_stolen_base(self, player_name, base):
-        if player_name == self.runner_on_first:
+        if self.runner_on_first == player_name:
             self.stolen_base_for_runner_on_first = True
-        elif player_name == self.runner_on_second:
+        elif self.runner_on_second == player_name:
             self.stolen_base_for_runner_on_second = True
-        elif player_name == self.runner_on_third:
+        elif self.runner_on_third == player_name:
             self.stolen_base_for_runner_on_third = True
 
         if len(self.pitch_sequence) > 0:
@@ -1025,7 +1026,7 @@ class GameState:
         self._batting_event_is_official = False
         
     def advance_on_dropped_third_strike(self, player_name):
-        assert(player_name == self.batter)
+        assert(self.batter == player_name)
         self.pitch_sequence += constants.PITCH_CHARS.STRIKE_UNKNOWN_TYPE
         self.event_text += 'KPB'
         self.event_type = constants.EVENT_CODE.STRIKEOUT
@@ -1080,11 +1081,11 @@ class GameState:
 
         if self.batter == player_name:
             self.batter_destination = destination_base_name
-        elif player_name == self.runner_on_first:
+        elif self.runner_on_first == player_name:
             self.runner_on_first_destination = destination_base_name
-        elif player_name == self.runner_on_second:
+        elif self.runner_on_second == player_name:
             self.runner_on_second_destination = destination_base_name
-        elif player_name == self.runner_on_third:
+        elif self.runner_on_third == player_name:
             self.runner_on_third_destination = destination_base_name
 
         #TODO: confirm we want to use the result_pitcher here with the pitcher charged
