@@ -6,9 +6,26 @@ class LineupError(Exception):
 
 
 class Player:
-    def __init__(self, name, number, order, position, hand, iddict={}):
+    def __init__(self, name, number=None, order=None, position=None, hand=None, iddict={}):
+        """
+        setup Player object
+        
+        names presented in "last, first" (as given with comma) order will be switched (Smith, Joe => Joe Smith)
+        positions are verified and looked up to become the character version ie. 'LF' or '1B'
+        """
+        
+        try:
+            name = name.strip()
+            if ',' in name:
+                last, first = name.split(',', 1)
+                name = first.strip() + ' ' + last.strip()
+        except AttributeError:
+            pass
         self.name = name
-        self.number = number
+        try:
+            self.number = int(number)
+        except TypeError:
+            self.number = None
         try:
             self.order = int(order)
         except TypeError:
@@ -27,10 +44,10 @@ class Player:
             return None
 
     def __eq__(self, other):
-        return self.name == other.name and self.number == other.number
+        return len(self.diff(other)) == 0 
 
     def __str__(self):
-        return "%2s %3s %s %3s %2s" % (self.order, self.number, self.name.ljust(18), self.position, self.hand)
+        return "%2s %3s %s %3s %2s" % (self.order, self.number, str(self.name).ljust(18), self.position, self.hand)
 
     def set_position(self, position):
         self.position = self._verified_position(position)
@@ -52,6 +69,36 @@ class Player:
             if vars(other)[k] != v:
                 diffs[k] = (v, vars(other)[k])
         return diffs
+    
+    def calc_match_score(self, other):
+        points = 0
+        if self.name == other.name:
+            points += 4
+        elif self.name is not None:
+            myfirst, mylast = self.name.split(' ', 1)
+            otherfirst, otherlast = other.name.split(' ', 1)
+            if mylast == otherlast:
+                points += 2
+            try:
+                if myfirst[0] == otherfirst[0]:
+                    points += 1
+            except IndexError:
+                print "{} vs {}".format(myfirst, other.name)
+                pass
+        if self.number == other.number:
+            points += 1
+        if self.position == other.position:
+            points += 1
+        return points
+            
+    def find_closest(self, player_list):
+        match_scores = [self.calc_match_score(other) for other in player_list]
+        best_score = max(match_scores)
+        winner_count = match_scores.count(best_score)
+        if winner_count == 1:
+            return player_list[match_scores.index(best_score)]
+        else:
+            raise ValueError("No single good match.  Tie between {} entries.  player {}".format(winner_count, self))
 
 class PlayerList(list):
     """
@@ -68,38 +115,38 @@ class PlayerList(list):
         for p in player_list:
             self.add_player(p)
 
-    def update_players(self, player_list, ignore_numberless=False):
+    def update_players(self, player_list):
         """
         add any player objects from list
         default, only add if players have numbers
         """
         for p in player_list:
-            try:
-                self.update_player(p)
-            except KeyError:
-                if ignore_numberless:
-                    pass
-                else:
-                    raise
-
+            self.update_player(p)
+#        
+#    def __add__(self, player_list):
+#        new_list = PlayerList()
+#        new_list.add_players(self)
+#        new_list.add_players(player_list)
+#        return new_list
+     
     def add_player(self, player):
         """add_player if not already in lineup"""
         if player not in self:
             self.append(player)
         else:
-            raise LineupError("{} already in lineup: {}".format(player.name, str(self)))
+            raise LineupError("{} already in lineup:\n {}".format(player.name, str(self)))
 
     def update_player(self, player):
         """add_player.
         if already in lineup, replace old player
         """
-        my_player_numbers = [p.number for p in self]
-        if player.number is None:
-            raise KeyError("All Players must have numbers")
-        if player.number not in my_player_numbers:
+        my_player_names = [p.name for p in self]
+        if player.name is None:
+            raise KeyError("All Players must have names")
+        if player.name not in my_player_names:
             self.append(player)
         else:
-            replace_index = my_player_numbers.index(player.number)
+            replace_index = my_player_names.index(player.name)
             current_player = self[replace_index]
             current_player.merge(player)
 
@@ -108,6 +155,12 @@ class PlayerList(list):
             if p.name == name:
                 return p
         raise KeyError("No player found with name %s" % name)
+
+    def find_player_by_number(self, number):
+        for p in self:
+            if int(p.number) == int(number):
+                return p
+        raise KeyError("No player found with number %s" % number)
 
     def set_player_position(self, name, position):
         self.find_player_by_name(name).set_position(position)
