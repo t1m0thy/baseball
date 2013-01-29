@@ -15,6 +15,7 @@ from models import event
 def import_game(gameid, cache_path=None):
     parser = psp.PointStreakParser()
     # init scraper for this game id
+    gameid = str(gameid)
     scraper = pss.PointStreakScraper(gameid, cache_path)
     # create new game state
     game = gamestate.GameState()
@@ -51,16 +52,18 @@ def import_game(gameid, cache_path=None):
                     game.new_batter(raw_event.batter())
                 parser.parse_event(raw_event.text())
             except pp.ParseException, pe:
-                logger.critical("%s: %s of inning %s\n%s" % (raw_event.title(),
-                                                              game.get_half_string(),
-                                                              game.inning,
-                                                              pe.markInputline()))
-                logger.error("possible source: {}".format(raw_event.text()))
+                try:
+                    logger.critical("%s: %s of inning %s\n%s" % (raw_event.title(),
+                                                                  game.get_half_string(),
+                                                                  game.inning,
+                                                                  pe.markInputline()))
+                except:
+                    logger.error("possible source: {}".format(raw_event.text()))
                 raise
             except:
                 raise  # StandardError("Error with event: {}".format(raw_event.text()))
     game.set_previous_event_as_game_end()
-    return game, scraper.review_url()
+    return game
 
 def init_database(use_mysql=False, dbname="smallball"):
     """ 

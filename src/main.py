@@ -18,7 +18,7 @@ logger = logging.getLogger("main")
 # instance parser, setup databse
 #===========================================================================
 games = {}
-session = manager.init_database()
+session = manager.init_database(use_mysql=False)
 
 # track parsing success game ids
 
@@ -27,7 +27,7 @@ jm = JobManager("pending.yml")
 for gameid in jm.jobs("pointstreak"):
     print gameid
     try:
-        game, review_url = manager.import_game(gameid)
+        game = manager.import_game(gameid)
         for event in game.events():
             session.add(event)
         session.commit()
@@ -39,13 +39,12 @@ for gameid in jm.jobs("pointstreak"):
             logger.exception("Error in Game %s in %s of inning %s" % (game.game_id, game.get_half_string(), game.inning))
         except (NameError, AttributeError):
             pass
-#        try:
-#            jm.set_job_status(game.game_id, "pointstreak", "error")
-#        except NameError:
-#            pass
-#        if raw_input("show_problem_page?") == 'y':
-#            webbrowser.open_new_tab(review_url)
-        raise
+        try:
+            jm.set_job_status(game.game_id, "pointstreak", "error")
+        except NameError:
+            pass
+
+jm.save()
 
 #===============================================================================
 # Report Summary
