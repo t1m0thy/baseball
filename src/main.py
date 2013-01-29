@@ -22,9 +22,7 @@ session = manager.init_database(use_mysql=False)
 
 # track parsing success game ids
 
-jm = JobManager("pending.yml")
-
-for gameid in jm.jobs("pointstreak"):
+def process_one(gameid):
     print gameid
     try:
         game = manager.import_game(gameid)
@@ -33,6 +31,7 @@ for gameid in jm.jobs("pointstreak"):
         session.commit()
         games[game.game_id] = game
         jm.complete_job(game.game_id, "pointstreak")
+        jm.save()
     except Exception, e:
         raise
         try:
@@ -41,10 +40,17 @@ for gameid in jm.jobs("pointstreak"):
             pass
         try:
             jm.set_job_status(game.game_id, "pointstreak", "error")
+            jm.save()
         except NameError:
             pass
 
-jm.save()
+if options.game is None:
+    jm = JobManager("pending.yml")
+    
+    for gameid in jm.jobs("pointstreak"):
+        process_one(gameid)
+else:
+    process_one(options.game)
 
 #===============================================================================
 # Report Summary

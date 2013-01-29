@@ -18,7 +18,7 @@ def setupRootLogger(level):
     console = logging.StreamHandler()
     console.setLevel(intlevel)
     # set a format which is simpler for console use
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    formatter = logging.Formatter(" %(levelname)8s - %(asctime)s - %(name)s -%(message)s")
     # tell the handler to use this format
     console.setFormatter(formatter)
     # add the handler to the root logger

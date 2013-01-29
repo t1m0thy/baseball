@@ -6,7 +6,6 @@ setuplogger.setupRootLogger(0)
 import pointstreakscraper as pss
 
 
-
 class Test109951(unittest.TestCase):
     def setUp(self):
         self.scraper = pss.PointStreakScraper("109951")

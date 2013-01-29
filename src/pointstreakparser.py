@@ -19,9 +19,6 @@ class PointStreakParser:
         self.event_cache = []
         self.gamewrap.set_game(game)
 
-    def make_lower(self, text, location, tokens):
-        return text.lower()
-        
     def setup_parser(self):
         #===========================================================================
         # General Parser Items
@@ -207,7 +204,7 @@ class PointStreakParser:
         pitching_sub.setParseAction(self.gamewrap.parse_defensive_sub)
 
         offensive_sub = pp.Keyword("Offensive Substitution.") + new_player + \
-                        pp.Keyword("subs for") + replacing + period
+                        pp.Optional(pp.Keyword("subs for") + replacing) + period
         offensive_sub.setParseAction(self.gamewrap.parse_offensive_sub)
         runner_sub = pp.Keyword("Offensive Substitution.") + new_player + \
                      pp.Keyword("runs for") + replacing + pp.Keyword("at") + \
