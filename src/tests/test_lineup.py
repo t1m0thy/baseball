@@ -13,7 +13,14 @@ class TestPlayer(unittest.TestCase):
         boggs.merge(boggs2)
         self.assertEqual(boggs.number, 26)
         
-        
+    def test_name_equals(self):
+        boggs = Player("Wade Boggs", 26, 1, "P", LEFT)
+        self.assertEquals(boggs.name, "wade boggs ")
+
+    def test_name_not_equals(self):
+        boggs = Player("Wade Boggs JR", 26, 1, "P", LEFT)
+        self.assertFalse(boggs.name != "wade boggs jr")
+        self.assertTrue(boggs.name == "wade boggs jr")
         
 class TestLineup(unittest.TestCase):
     def setUp(self):

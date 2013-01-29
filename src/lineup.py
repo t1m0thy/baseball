@@ -1,10 +1,16 @@
 from constants import POSITIONS, DH, P, POSITION_LOOKUP
 
-
 class LineupError(Exception):
     pass
 
-
+class Name(str):
+    """ will test quality with lower case, and stripped"""
+    def __eq__(self, other):
+        return self.lower() == str(other).strip().lower()
+    
+    def __ne__(self, other):
+        return not self.__eq__(other)
+    
 class Player:
     def __init__(self, name, number=None, order=None, position=None, hand=None, iddict={}):
         """
@@ -22,6 +28,8 @@ class Player:
         except AttributeError:
             pass
         self.name = name
+        if name is not None:
+            self.name = Name(self.name)
         self.number = number
         try:
             self.order = int(order)
