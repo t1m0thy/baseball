@@ -42,20 +42,35 @@ class ScrapeError(Exception):
     pass
 
 
+def make_xml_url(gameid):
+    """ the xml url used for parsing game.  useful for reviewing site source """
+    return PS_GAME_XML % str(gameid)
+
+
+def make_xml_seq_url(gameid, seq):
+    """ the xml sequence url used for parsing game.  useful for reviewing site source """
+    return PS_GAME_SEQUENCE_XML % (str(gameid), str(seq))
+
+
+def make_html_url(gameid):
+    """ the html url used for parsing game.  useful for reviewing site source """
+    return PS_GAME_HTML % str(gameid)
+    
+    
 class PointStreakScraper(GameScraper):
     def __init__(self, gameid, cache_path=None):
-        self.gameid = gameid
+        self.gameid = str(gameid)
         if cache_path is not None:
             self._cache_path = cache_path            
         else:
             self._cache_path = DEFAULT_CACHE_PATH
-        self._home_playerid_by_num = {}
-        self._away_playerid_by_num = {}
+        self._home_html_player_list = PlayerList()
+        self._away_html_player_list = PlayerList()
 
         xml = self._get_pointstreak_xml()
         self.root = lxml.etree.fromstring(xml)
         self.game_info = dict(self.root.find(".//{*}BaseballGame").items())
-        self._build_player_id_lookup_dict()
+        self._build_html_player_tables()
 
     def home_team(self):
         """ return name of home team """
@@ -64,10 +79,6 @@ class PointStreakScraper(GameScraper):
     def away_team(self):
         """ return name of away team """
         return self.game_info["VisitingTeam"]
-
-    def review_url(self):
-        """ the url used for parsing game.  useful for reviewing site source """
-        return PS_GAME_XML % self.gameid
 
     def halfs(self):
         """ iterator that returns HalfInning Objects through the game """
@@ -93,48 +104,52 @@ class PointStreakScraper(GameScraper):
         away_roster.update_players(self._make_players(is_home=False, player_dict_list=away_offense + away_replaced + away_pitchers))
         home_roster.update_players(self._make_players(is_home=True, player_dict_list=home_offense + home_replaced + home_pitchers))
         
-        self._update_handedness(False, away_roster)
-        self._update_handedness(True, home_roster)
+        self._complete_player_profile(False, away_roster)
+        self._complete_player_profile(True, home_roster)
         return away_roster, home_roster
 
+    def scrape_lineup_from_seq_xml(self, seq):
+        xml = self._get_pointstreak_xml(seq)
+        root = lxml.etree.fromstring(xml)
+        away = root.find(".//{*}VisitingTeam")
+        away_offense = [dict(e.items()) for e in away.find(".//{*}Offense").getchildren()]
+        away_defense = [dict(e.items()) for e in away.find(".//{*}Defense").getchildren()]
+        away_pitchers = [dict(e.items()) for e in away.find(".//{*}Pitchers").getchildren()]
+        home = root.find(".//{*}HomeTeam")
+        home_offense = [dict(e.items()) for e in home.find(".//{*}Offense").getchildren()]
+        home_defense = [dict(e.items()) for e in home.find(".//{*}Defense").getchildren()]
+        home_pitchers = [dict(e.items()) for e in home.find(".//{*}Pitchers").getchildren()]
+
+        away_offense_player_list = self._make_players(is_home=False, player_dict_list=away_offense)
+        away_defense_player_list = self._make_players(is_home=False, player_dict_list=away_defense)
+
+        if away_pitchers:
+            starting_pitcher = self._make_pitcher(is_home=False, player_dict=away_pitchers[0])
+            away_defense_player_list.update_player(starting_pitcher)
+
+        
+        home_offense_player_list = self._make_players(is_home=False, player_dict_list=home_offense)
+        home_defense_player_list = self._make_players(is_home=False, player_dict_list=home_defense)
+
+        if home_pitchers:
+            starting_pitcher = self._make_pitcher(is_home=True, player_dict=home_pitchers[0])
+            home_defense_player_list.update_player(starting_pitcher)
+            
+        return away_offense_player_list + away_defense_player_list, home_offense_player_list + home_defense_player_list
+            
     def starting_lineups(self):
         complete = False
         seq = 0
+        away_lineup = Lineup()
+        home_lineup = Lineup()
+
         while not complete:
             try:
-                xml = self._get_pointstreak_xml(seq)
-                root = lxml.etree.fromstring(xml)
-                away = root.find(".//{*}VisitingTeam")
-                away_offense = [dict(e.items()) for e in away.find(".//{*}Offense").getchildren()]
-                away_defense = [dict(e.items()) for e in away.find(".//{*}Defense").getchildren()]
-                away_pitchers = [dict(e.items()) for e in away.find(".//{*}Pitchers").getchildren()]
-                home = root.find(".//{*}HomeTeam")
-                home_offense = [dict(e.items()) for e in home.find(".//{*}Offense").getchildren()]
-                home_defense = [dict(e.items()) for e in home.find(".//{*}Defense").getchildren()]
-                home_pitchers = [dict(e.items()) for e in home.find(".//{*}Pitchers").getchildren()]
-
-                away_lineup = Lineup()
-                away_lineup.update_players(self._make_players(is_home=False, player_dict_list=away_offense), ignore_numberless=True)
-                away_lineup.update_players(self._make_players(is_home=False, player_dict_list=away_defense), ignore_numberless=True)
-
-                if len(away_pitchers) > 0:
-                    starting_pitcher = self._make_pitcher(is_home=False, player_dict=away_pitchers[0])
-                    try:
-                        away_lineup.add_player(starting_pitcher)
-                    except LineupError:
-                        pitcher = away_lineup.find_player_by_name(starting_pitcher.name)
-                        pitcher.merge(starting_pitcher)
-
-                home_lineup = Lineup()
-                home_lineup.update_players(self._make_players(is_home=False, player_dict_list=home_offense), ignore_numberless=True)
-                home_lineup.update_players(self._make_players(is_home=False, player_dict_list=home_defense), ignore_numberless=True)
-                if len(home_pitchers) > 0:
-                    starting_pitcher = self._make_pitcher(is_home=True, player_dict=home_pitchers[0])
-                    try:
-                        home_lineup.add_player(starting_pitcher)
-                    except LineupError:
-                        pitcher = home_lineup.find_player_by_name(starting_pitcher.name)
-                        pitcher.merge(starting_pitcher)
+                away_player_list, home_player_list = self.scrape_lineup_from_seq_xml(seq)
+        
+                away_lineup.update_players(away_player_list)
+                home_lineup.update_players(home_player_list)
+                
                 try:
                     complete = home_lineup.is_complete(raise_reason=False)
                 except LineupError, e:
@@ -153,8 +168,8 @@ class PointStreakScraper(GameScraper):
                 home_lineup.is_complete(raise_reason=True)
                 away_lineup.is_complete(raise_reason=True)
 
-        self._update_handedness(False, away_lineup)
-        self._update_handedness(True, home_lineup)
+        self._complete_player_profile(False, away_lineup)
+        self._complete_player_profile(True, home_lineup)
         return away_lineup, home_lineup
 
     def get_player_info(self, player_id):
@@ -185,7 +200,7 @@ class PointStreakScraper(GameScraper):
         return pinfo
 
     def _get_point_streak_url(self):
-        return PS_GAME_HTML % self.gameid
+        return make_html_url(self.gameid)
 
     def _get_pointstreak_game_html(self, force_reload=False):
         url = self._get_point_streak_url()
@@ -194,10 +209,10 @@ class PointStreakScraper(GameScraper):
 
     def _get_pointstreak_xml(self, seq=None, force_reload=False):
         if seq is None:
-            url = PS_GAME_XML % self.gameid
+            url = make_xml_url(self.gameid)
             cache_filename = os.path.join(self._cache_path, GAME_XML_CACHE_PATH % ("PS" + self.gameid))
         else:
-            url = PS_GAME_SEQUENCE_XML % (self.gameid, seq)
+            url = make_xml_seq_url(self.gameid, seq)
             cache_filename = os.path.join(self._cache_path, GAME_XML_SEQ_CACHE_PATH % (("PS" + self.gameid), seq))
         return get_cached_url(url, cache_filename, force_reload)
 
@@ -210,7 +225,7 @@ class PointStreakScraper(GameScraper):
                                   iddict={"pointstreak": None})
 
     def _make_players(self, is_home, player_dict_list):
-        out = []
+        out = PlayerList()
         for player_dict in player_dict_list:
             try:
                 new_player = Player(player_dict.get("Name"),
@@ -219,7 +234,8 @@ class PointStreakScraper(GameScraper):
                                       player_dict.get("Position"),
                                       player_dict.get("Hand"),
                                       iddict={"pointstreak": None})
-                out.append(new_player)
+                if new_player.name is not None:
+                    out.add_player(new_player)
             except (AttributeError, KeyError):
                 logger.error("making Player from dict = %s" % player_dict)
                 raise
@@ -228,38 +244,48 @@ class PointStreakScraper(GameScraper):
     def _div_id_dict(self, element):
         return dict((d.attrs["id"], d) for d in element.findAll("div") if d.has_attr("id"))
 
-    def get_player_id_from_team_and_number(self, is_home, player_number):
+    def get_player_id(self, is_home, player):
         if is_home:
-            return self._home_playerid_by_num[player_number]
+            search_list = self._home_html_player_list
         else:
-            return self._away_playerid_by_num[player_number]
-
-    def _update_player_id_lookup_with_table(self, is_home, table):
+            search_list = self._away_html_player_list
+        try:
+            bestmatch = player.find_closest(search_list)
+            return bestmatch.iddict.get("pointstreak")
+        except:
+            logger.error("Failed to find match for:\n{} \nin list:\n{}".format(player, search_list))
+            raise
+        
+    def _update_html_player_table(self, is_home, table):
         for t in table.find_all("tr"):
             if t.a is not None:
-                player_num = t.td.text 
+                #[u'2', u'Campbell, D', u'SS', u'4', u'0', u'0', u'0', u'0', u'1', u'.302']
+                table_values = [td.text for td in t.find_all("td")]
+                player_num = table_values[0]
+                player_name = table_values[1]
                 player_id = t.a.attrs.get("href").split('=')[1]
+                player = Player(player_name, player_num, iddict={"pointstreak": player_id})
                 if is_home:
-                    self._home_playerid_by_num[player_num] = player_id
+                    self._home_html_player_list.append(player)
                 else:
-                    self._away_playerid_by_num[player_num] = player_id
-
-    def _build_player_id_lookup_dict(self):
+                    self._away_html_player_list.append(player)
+                
+    def _build_html_player_tables(self):
         html = self._get_pointstreak_game_html()
         soup = BeautifulSoup(html)
-        self.divs = self._div_id_dict(soup)
+        divs = self._div_id_dict(soup)
 
-        batting_stats_div = self.divs[DIV_ID_BATTING_STATS]
-        batting_stats_tables = batting_stats_div.find_all("table")
+        batting_stats_div = divs[DIV_ID_BATTING_STATS]
+        self._batting_stats_tables = batting_stats_div.find_all("table")
 
-        self._update_player_id_lookup_with_table(is_home=False, table=batting_stats_tables[0])
-        self._update_player_id_lookup_with_table(is_home=True, table=batting_stats_tables[1])
+        self._update_html_player_table(is_home=False, table=self._batting_stats_tables[0])
+        self._update_html_player_table(is_home=True, table=self._batting_stats_tables[1])
 
-        pitching_stats_div = self.divs[DIV_ID_PITCHING_STATS]
-        pitching_stats_tables = pitching_stats_div.find_all("table")
+        pitching_stats_div = divs[DIV_ID_PITCHING_STATS]
+        self._pitching_stats_tables = pitching_stats_div.find_all("table")
 
-        self._update_player_id_lookup_with_table(is_home=False, table=pitching_stats_tables[0])
-        self._update_player_id_lookup_with_table(is_home=True, table=pitching_stats_tables[1])
+        self._update_html_player_table(is_home=False, table=self._pitching_stats_tables[0])
+        self._update_html_player_table(is_home=True, table=self._pitching_stats_tables[1])
 
     def _player_url_from_id(self, player_id):
         return PS_PLAYER_URL % player_id
@@ -269,9 +295,9 @@ class PointStreakScraper(GameScraper):
         player_cache_path = os.path.join(self._cache_path, PLAYER_CACHE_PATH % ("PS" + str(player_id)))
         return get_cached_url(self._player_url_from_id(player_id), player_cache_path)
         
-    def _update_handedness(self, is_home, player_list):
+    def _complete_player_profile(self, is_home, player_list):
         for player in player_list:
-            player_id = self.get_player_id_from_team_and_number(is_home, player.number)
+            player_id = self.get_player_id(is_home, player)
             player_info = self.get_player_info(player_id)
             player.hand = player_info.THROW_HAND
 
@@ -290,14 +316,14 @@ class PSPHalfInningXML(HalfInning):
 class PSPRawEventXML(RawEvent):
     def __init__(self, element):
         tag = element.tag.split("}")[-1]
-        event_type, text, batter, sub_type = tag, element.text, element.attrib.get("Name"), element.attrib.get("Type")
+        event_type, text, batter, number, sub_type = tag, element.text, element.attrib.get("Name"), element.attrib.get("Number"), element.attrib.get("Type")
         try:
             assert(event_type in ["Atbat", "Substitution"])
         except AssertionError:
-            print event_type
             logger.exception("Found event tag %s" % event_type)
         self._type = event_type
-        self._batter = batter
+        self._batter_name = batter
+        self._batter_number = number
         # If this is a sub, add the Type to the beginning of the string: ie.  "Offensive Substitution"
         if sub_type != None:
             text = sub_type + '. ' + text
@@ -310,7 +336,12 @@ class PSPRawEventXML(RawEvent):
         if self.is_sub():
             return StandardError("No batter for substitution event")
         else:
-            return self._batter
+            return self._batter_name
+    def batter_number(self):
+        if self.is_sub():
+            return StandardError("No batter for substitution event")
+        else:
+            return self._batter_number
 
     def text(self):
         return self._text
@@ -319,7 +350,8 @@ class PSPRawEventXML(RawEvent):
         if self.is_sub():
             return self._type
         else:
-            return self._type + " " + self._batter
+            return "{} #{} {}".format(self._type, self._batter_number, self._batter_name)
+            
 
 
 
