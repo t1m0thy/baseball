@@ -1,15 +1,24 @@
 import logging
-import webbrowser
-import yaml
-import sys
 
-import commandlineoptions
 import setuplogger
 import manager
 from jobmanager import JobManager
+import pointstreakscraper as pss
 
-parser = commandlineoptions.parser
+#===============================================================================
+# PARSE COMMAND LINE ARGS
+#===============================================================================
+import argparse
+parser = argparse.ArgumentParser("The Small Ball Stats Muncher")
+loghelp = """log level: one of 'all', 'debug', 'info', 'warn', 'error', 'critical'.  
+                Default is 'warn'"""
+parser.add_argument('-l', '--log', action="store", default="warn", help=loghelp)
+parser.add_argument('-g', '--game', action="store", default=None, help="run one specific game number")
 options = parser.parse_args()
+
+#===============================================================================
+# SETUP LOGGING
+#===============================================================================S
 
 rootlogger = setuplogger.setupRootLogger(options.log)
 logger = logging.getLogger("main")
@@ -41,10 +50,13 @@ if options.game is None:
         finally:
             jm.save()
 else:
-    process_one(options.game)
-
+    try:
+        process_one(options.game)
+        print "PARSING COMPLETE"
+    except:
+        print "PROBLEM WITH {}".format(pss.make_html_url(options.game))
+        raise
 #===============================================================================
 # Report Summary
 #===============================================================================
-print "PARSING COMPLETE"
 
