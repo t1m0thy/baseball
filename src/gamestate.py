@@ -520,10 +520,12 @@ class GameState:
                 replacing_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
                 logger.warning("Used roster for auto-substitution of %s for %s" % (batter_player.name, replacing_player.name))
                 self.offensive_sub(batter_player.name, replacing_player.name)
-                # normally in an offensive sub, the player position would be PH
-                # in the case of an auto sub, we are going to just that player the position of the old player
-                # this is because there likely wont be a defensive sub either to put this new player in the correct position
-                batter_player.position = replacing_player.position
+                if not batter_player.is_sub():
+                    # normally in an offensive sub, the player position would be PH here
+                    # in the case of an auto sub (where the score keeper made a mistake),
+                    # we are going to just that player the position of the old player
+                    # this is because there likely wont be a defensive sub either to put this new player in the correct position
+                    batter_player.set_position(replacing_player.position)
 
             except KeyError:
                 raise StandardError("Auto Replace Failed.  %s not found in roster" % player_name)
@@ -669,6 +671,8 @@ class GameState:
         self.outs += 1
         self.outs_on_play += 1
 
+        logger.info("{} Put Out.".format(player_name))
+
         if self.batter != player_name:
             self._bases.remove(player_name)
 
@@ -677,7 +681,6 @@ class GameState:
 
         if self.outs > 3:
             raise StandardError("Recorded over 3 outs")            
-        logger.info("{} Put Out.".format(player_name))
         
     def _credit_putout_to_fielder(self, position_num):
         if self.fielder_with_first_putout is None:
@@ -883,7 +886,10 @@ class GameState:
     #------------------------------------------------------------------------------
 
     def hit_single(self, player_name, location=None):
-        assert(self.batter == player_name)
+        if self.batter != player_name:
+            raise StandardError("{}\nSingle from player {} who is not current batter {}".format(self.inning_string(),
+                                                                                       player_name, 
+                                                                                       self.batter))
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         if location is not None:
@@ -894,7 +900,10 @@ class GameState:
         self.hit_value = 1
 
     def hit_double(self, player_name, location=None):
-        assert(self.batter == player_name)
+        if self.batter != player_name:
+            raise StandardError("{}\nDouble from player {} who is not current batter {}".format(self.inning_string(),
+                                                                                       player_name, 
+                                                                                       self.batter))
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         if location is not None:
@@ -905,7 +914,10 @@ class GameState:
         self.hit_value = 2
 
     def hit_triple(self, player_name, location=None):
-        assert(self.batter == player_name)
+        if self.batter != player_name:
+            raise StandardError("{}\nTripe from player {} who is not current batter {}".format(self.inning_string(),
+                                                                                       player_name, 
+                                                                                       self.batter))
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         if location is not None:
@@ -916,7 +928,10 @@ class GameState:
         self.hit_value = 3
 
     def hit_home_run(self, player_name, location=None):
-        assert(self.batter == player_name)
+        if self.batter != player_name:
+            raise StandardError("{}\nHome Run from player {} who is not current batter {}".format(self.inning_string(),
+                                                                                       player_name, 
+                                                                                       self.batter))
         self._record_any_pending_runner_event()
         self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
         if location is not None:
@@ -1023,7 +1038,10 @@ class GameState:
         self._batting_event_is_official = False
         
     def advance_on_dropped_third_strike(self, player_name):
-        assert(self.batter == player_name)
+        if self.batter != player_name:
+            raise StandardError("{}\nAdvance on Dropped 3rd Strike for {} who is not current batter {}".format(self.inning_string(),
+                                                                                       player_name, 
+                                                                                       self.batter))
         self.pitch_sequence += constants.PITCH_CHARS.STRIKE_UNKNOWN_TYPE
         self.event_text += 'KPB'
         self.event_type = constants.EVENT_CODE.STRIKEOUT
@@ -1089,7 +1107,7 @@ class GameState:
         advance_string = self._bases.advance(player_name, base_num)
         if advance_string.startswith("B"):
             if self.batter != player_name:
-                logger.warning("Player {} neither batter nor found on bases for advance to {}".format(player_name, base))
+                logger.warning("Player {} neither batter {} nor found on bases for advance to {}".format(player_name, self.batter, base))
                 raise StandardError("Lost Player")
         self._advancing_event_text += '.' + advance_string
 
@@ -1119,12 +1137,21 @@ class GameState:
     # SUBSTITUTIONS
     #------------------------------------------------------------------------------
 
-    def defensive_sub(self, new_player_name, replacing_name, position=''):
+    def defensive_sub(self, new_player_name, replacing_name='', position=''):
         # "moves to" or "subs at" Case
         logging.info("DEFENSIVE SUB -- {} for {} at {}".format(new_player_name, replacing_name, position))
         if replacing_name == '':
             if position == '':
-                raise StandardError("Defensive Sub Error, no new position or replacement name")
+                new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
+                current_vacancies = self._current_fielding_lineup().missing_fielders()
+                if len(current_vacancies) == 1:
+                    position = current_vacancies[0]
+                    logger.warning("Guessing at position {} of unspecified defensive sub {}".format(position, new_player.name))            
+                if position is None or position == '':
+                    position = new_player.position
+                    logger.warning("Using previous player position {} of unspecified defensive sub {}".format(position, new_player.name)) 
+                if position is None or position == '':
+                    raise StandardError("Defensive Sub Error, no new position or replacement name")
             current_defense = self._current_fielding_lineup()
             try:
                 # player moves to new position
@@ -1135,9 +1162,12 @@ class GameState:
                 # player substitutes
                 new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
                 new_player.set_position(position)
-                removed_player = current_defense.find_player_by_position(position)
-                new_player.order = removed_player.order
-                current_defense.remove_player(removed_player.name)
+                try:
+                    removed_player = current_defense.find_player_by_position(position)
+                    new_player.order = removed_player.order
+                    current_defense.remove_player(removed_player.name)
+                except KeyError:
+                    logging.warning("Defensive sub {} at {} found no player to replace.".format(new_player.name, new_player.position))
                 current_defense.add_player(new_player)
         else:
             possible_remove_player = self._current_fielding_lineup().find_player_by_name(replacing_name)
@@ -1204,15 +1234,12 @@ class GameState:
         if replace_name is empty.  assume replacement is for next batter
         
         """
+        
+        new_player = self._current_batting_roster().find_player_by_name(new_player_name)    
         if replacing_name.strip() == '':
-            if self.bat_home_id:
-                current_place_in_order = self._home_place_in_batting_order
-            else:
-                current_place_in_order = self._away_place_in_batting_order
-            removed_player = self._current_batting_lineup().find_player_by_order(current_place_in_order)
-        else:
-            removed_player = self._current_batting_lineup().remove_player(replacing_name)
-        new_player = self._current_batting_roster().find_player_by_name(new_player_name)
+            new_player.set_as_pending_sub()
+            return
+        removed_player = self._current_batting_lineup().remove_player(replacing_name)
         self._current_batting_lineup().add_player(new_player)
 
         if pinch_runner:
@@ -1244,5 +1271,8 @@ class GameState:
             logging.info("offensive sub -- {} hitting for {}".format(new_player_name, replacing_name))
             self._next_batter_pinch = True
 
-        new_player.position = None  #TODO: make sure these guys get a position before they field
+        if pinch_runner:
+            new_player.set_position('PR')
+        else:
+            new_player.set_position('PH')
         new_player.order = removed_player.order

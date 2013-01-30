@@ -19,7 +19,7 @@ class Player:
         names presented in "last, first" (as given with comma) order will be switched (Smith, Joe => Joe Smith)
         positions are verified and looked up to become the character version ie. 'LF' or '1B'
         """
-        
+        self._needs_to_sub = False
         try:
             name = name.strip()
             if ',' in name:
@@ -82,10 +82,10 @@ class Player:
         elif self.name is not None:
             myfirst, mylast = self.name.split(' ', 1)
             otherfirst, otherlast = other.name.split(' ', 1)
-            if mylast == otherlast:
+            if mylast.lower() == otherlast.lower():
                 points += 2
             try:
-                if myfirst[0] == otherfirst[0]:
+                if myfirst[0].lower() == otherfirst[0].lower():
                     points += 1
             except IndexError:
                 print "{} vs {}".format(myfirst, other.name)
@@ -104,6 +104,12 @@ class Player:
             return player_list[match_scores.index(best_score)]
         else:
             raise ValueError("No single good match.  Tie between {} entries.  player {}".format(winner_count, self))
+
+    def set_as_pending_sub(self):
+        self._needs_to_sub = True
+
+    def is_sub(self):
+        return self._needs_to_sub
 
 class PlayerList(list):
     """
@@ -264,6 +270,14 @@ class Lineup(PlayerList):
 
     def position_dict(self):
         return dict([(p.position, p.name) for p in self])
+    
+    def missing_fielders(self):
+        missing = []
+        currently_filled = self.position_dict()
+        for p in POSITIONS:
+            if p not in currently_filled:
+                missing.append(p)
+        return missing
 
     def has_position(self, position):
         try:
