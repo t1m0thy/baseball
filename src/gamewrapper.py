@@ -45,7 +45,10 @@ class GameWrapper:
         self._game.pitch_foul()
 
     def put_out(self, text, location, tokens):
-        player_name = ' '.join(tokens[constants.PARSING.PLAYER][constants.PARSING_PLAYER.NAME])
+        player_name = tokens[constants.PARSING.PLAYER][constants.PARSING_PLAYER.NAME]
+        if type(player_name) == list:
+            player_name = ' '.join(player_name)
+        player_name = player_name.replace("&apos;","'")
         #print "PUTOUT", player_name
         description = tokens[constants.PARSING.DESCRIPTION]
         position = description.get(constants.PARSING.POSITION)
@@ -82,8 +85,13 @@ class GameWrapper:
             #raise StandardError("Parsing Error from unknown putout description: " + ' '.join(tokens))
 
     def parse_offensive_sub(self, text, location, tokens):
-        new_player_name = ' '.join(tokens[constants.PARSING.NEW_PLAYER][1:])
-        replacing_name = ' '.join(tokens.get(constants.PARSING.REPLACING, []))
+        new_player_name = tokens[constants.PARSING.NEW_PLAYER][1:]
+        replacing_name = tokens.get(constants.PARSING.REPLACING, [])
+        
+        if type(new_player_name) == list:
+            new_player_name = ' '.join(new_player_name).strip() 
+        if type(replacing_name) == list:
+            replacing_name = ' '.join(replacing_name).strip() 
 
         if constants.PARSING.BASE in tokens.asDict():
             self._game.offensive_sub(new_player_name, replacing_name, pinch_runner=True, base=tokens[constants.PARSING.BASE])
@@ -91,22 +99,36 @@ class GameWrapper:
             self._game.offensive_sub(new_player_name, replacing_name)
 
     def parse_defensive_sub(self, text, location, tokens):
-        new_player_name = ' '.join(tokens[constants.PARSING.NEW_PLAYER][1:])
-        replacing_name = ' '.join(tokens.get(constants.PARSING.REPLACING, [])).strip() # strip space to empty string if nothing there
+        new_player_name = tokens[constants.PARSING.NEW_PLAYER][1:]
+        replacing_name = tokens.get(constants.PARSING.REPLACING, [])# strip space to empty string if nothing there
+        
+        if type(new_player_name) == list:
+            new_player_name = ' '.join(new_player_name).strip() 
+        if type(replacing_name) == list:
+            replacing_name = ' '.join(replacing_name).strip() 
+        
         position = ' '.join(tokens.get(constants.PARSING.POSITION, [])).strip() # strip space to empty string if nothing there
         self._game.defensive_sub(new_player_name, replacing_name, position)
 
     def parse_advance(self, text, location, tokens):
         tdict = tokens.asDict()
         description = tokens[constants.PARSING.DESCRIPTION]
-        player_name = ' '.join(tdict[constants.PARSING.PLAYER][1:])
+        player_name = tdict[constants.PARSING.PLAYER][1:]
+
+        if type(player_name) == list:
+            player_name = ' '.join(player_name)
+
         base = tdict["base"][0]
         self._advance(player_name, base, description)
 
     def parse_score(self, text, location, tokens):
         tdict = tokens.asDict()
         description = tokens[constants.PARSING.DESCRIPTION]
-        player_name = ' '.join(tdict[constants.PARSING.PLAYER][1:])
+        player_name = tdict[constants.PARSING.PLAYER][1:]
+
+        if type(player_name) == list:
+            player_name = ' '.join(player_name)
+
         earned = constants.PARSING.EARNED in description
         base = 4
         self._advance(player_name, base, description, earned)

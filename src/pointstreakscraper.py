@@ -257,6 +257,10 @@ class PointStreakScraper(GameScraper):
             raise
         
     def _update_html_player_table(self, is_home, table):
+        if is_home:
+            current_list = self._home_html_player_list
+        else:
+            current_list = self._away_html_player_list
         for t in table.find_all("tr"):
             if t.a is not None:
                 #[u'2', u'Campbell, D', u'SS', u'4', u'0', u'0', u'0', u'0', u'1', u'.302']
@@ -265,10 +269,7 @@ class PointStreakScraper(GameScraper):
                 player_name = table_values[1]
                 player_id = t.a.attrs.get("href").split('=')[1]
                 player = Player(player_name, player_num, iddict={"pointstreak": player_id})
-                if is_home:
-                    self._home_html_player_list.append(player)
-                else:
-                    self._away_html_player_list.append(player)
+                current_list.update_player(player)
                 
     def _build_html_player_tables(self):
         html = self._get_pointstreak_game_html()
@@ -297,10 +298,14 @@ class PointStreakScraper(GameScraper):
         
     def _complete_player_profile(self, is_home, player_list):
         for player in player_list:
-            player_id = self.get_player_id(is_home, player)
-            player_info = self.get_player_info(player_id)
-            player.hand = player_info.THROW_HAND
-
+            try:
+                player_id = self.get_player_id(is_home, player)
+                player_info = self.get_player_info(player_id)
+                player.hand = player_info.THROW_HAND
+            except:
+                player.hand = '?'
+                logger.exception("Unable to find more info on {}".format(player.name))
+                
 
 class PSPHalfInningXML(HalfInning):
     def __init__(self, etree):
@@ -336,7 +341,7 @@ class PSPRawEventXML(RawEvent):
         if self.is_sub():
             return StandardError("No batter for substitution event")
         else:
-            return self._batter_name
+            return self._batter_name.replace("&apos;","'")
     def batter_number(self):
         if self.is_sub():
             return StandardError("No batter for substitution event")
@@ -344,7 +349,7 @@ class PSPRawEventXML(RawEvent):
             return self._batter_number
 
     def text(self):
-        return self._text
+        return self._text.replace("&apos;","'")
 
     def title(self):
         if self.is_sub():
