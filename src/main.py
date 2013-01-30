@@ -24,31 +24,22 @@ session = manager.init_database(use_mysql=False)
 
 def process_one(gameid):
     print gameid
-    try:
-        game = manager.import_game(gameid)
-        for event in game.events():
-            session.add(event)
-        session.commit()
-        games[game.game_id] = game
-        jm.complete_job(game.game_id, "pointstreak")
-        jm.save()
-    except Exception, e:
-        raise
-        try:
-            logger.exception("Error in Game %s in %s of inning %s" % (game.game_id, game.get_half_string(), game.inning))
-        except (NameError, AttributeError):
-            pass
-        try:
-            jm.set_job_status(game.game_id, "pointstreak", "error")
-            jm.save()
-        except NameError:
-            pass
+    game = manager.import_game(gameid)
+    for event in game.events():
+        session.add(event)
+    session.commit()
+    games[game.game_id] = game
 
 if options.game is None:
-    jm = JobManager("pending.yml")
-    
+    jm = JobManager("pending.yml")    
     for gameid in jm.jobs("pointstreak"):
-        process_one(gameid)
+        try:
+            process_one(gameid)
+            jm.complete_job(gameid, "pointstreak")
+        except:
+            jm.set_job_status(gameid, "pointstreak", "error")
+        finally:
+            jm.save()
 else:
     process_one(options.game)
 
