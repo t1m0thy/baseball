@@ -13,25 +13,17 @@ from models import event
 
 
 def import_game(gameid, cache_path=None):
-    parser = psp.PointStreakParser()
-    # init scraper for this game id
     gameid = str(gameid)
     scraper = pss.PointStreakScraper(gameid, cache_path)
-    # create new game state
+
     game = gamestate.GameState()
     game.home_team_id = scraper.home_team()
     game.visiting_team = scraper.away_team()
     game.game_id = gameid
 
-    # pass game to parser
-    #TODO: the game wrapper for point streak should be instanced here...
-    # it might make sense to just instance a new parser for each game.
-    parser.set_game(game)
-
     #=======================================================================
     # Parse starting lineups and game rosters (any player to appear at all)
     #=======================================================================
-
     away_starting_lineup, home_starting_lineup = scraper.starting_lineups()
     game.set_away_lineup(away_starting_lineup)
     game.set_home_lineup(home_starting_lineup)
@@ -40,6 +32,12 @@ def import_game(gameid, cache_path=None):
     game.set_away_roster(away_roster)
     game.set_home_roster(home_roster)
 
+    # pass game to parser
+    #TODO: the game wrapper for point streak should be instanced here...
+    # it might make sense to just instance a new parser for each game.
+    names_in_game = [p.name.replace("_apos;",'\'').replace("&apos;",'\'') for p in away_roster + home_roster]
+    parser = psp.PointStreakParser(game, names_in_game)
+    
     #=======================================================================
     # Parse plays
     #=======================================================================
@@ -53,14 +51,17 @@ def import_game(gameid, cache_path=None):
                 parser.parse_event(raw_event.text())
             except pp.ParseException, pe:
                 try:
-                    logger.critical("%s: %s of inning %s\n%s" % (raw_event.title(),
-                                                                  game.get_half_string(),
-                                                                  game.inning,
-                                                                  pe.markInputline()))
+                    logger.critical("{}: {}\n{}".format(raw_event.title(),
+                                                      game.inning_string(),
+                                                          pe.markInputline()))
                 except:
                     logger.error("possible source: {}".format(raw_event.text()))
                 raise
             except:
+                try:
+                    logger.critical("At {}".format(game.inning_string()))
+                except:
+                    logger.error("possible source: {}".format(raw_event.text()))
                 raise  # StandardError("Error with event: {}".format(raw_event.text()))
     game.set_previous_event_as_game_end()
     return game
