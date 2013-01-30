@@ -20,6 +20,7 @@ class Player:
         positions are verified and looked up to become the character version ie. 'LF' or '1B'
         """
         self._needs_to_sub = False
+        self._pinch_hitter = False
         try:
             name = name.strip()
             if ',' in name:
@@ -105,12 +106,19 @@ class Player:
         else:
             raise ValueError("No single good match.  Tie between {} entries.  player {}".format(winner_count, self))
 
-    def set_as_pending_sub(self):
-        self._needs_to_sub = True
+    def set_pending_sub(self, set_to=True):
+        self._needs_to_sub = set_to
 
-    def is_sub(self):
+    def is_pending_sub(self):
         return self._needs_to_sub
+    
+    def set_pinch_hitter(self, set_to=True):
+        self._pinch_hitter = set_to
 
+    def is_pinch_hitter(self):
+        return self._pinch_hitter
+    
+            
 class PlayerList(list):
     """
     maintain one team's line up or 9 or 10 players
@@ -199,7 +207,7 @@ class Lineup(PlayerList):
         p = self.find_player_by_name(name)
         self.remove(p)
         return p
-
+            
     def is_complete(self, raise_reason=False):
         """
         check that current lineup is valid

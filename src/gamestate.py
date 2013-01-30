@@ -210,7 +210,7 @@ class GameState:
         #=======================================================================
         # Non Model attributes
         #=======================================================================
-        self._next_batter_pinch = False
+
         self._next_batter_leadoff = False
         self._home_place_in_batting_order = 1  #always start with leadoff batter
         self._away_place_in_batting_order = 1  #always start with leadoff batter
@@ -465,40 +465,38 @@ class GameState:
     #  NEW CALLS
     #------------------------------------------------------------------------------
     def new_batter(self, player_name):
-        if self.batter == player_name:
-            logger.warning("Same batter twice: {}.  game {} {} of the {}".format(player_name, self.game_id, self.get_half_string(), self.inning))
-            return
-        self.balls = 0
-        self.strikes = 0
-        self.outs_on_play = 0
-        self.hit_value = 0
-        self.pitch_sequence = ''
-        self.event_text = ''
-        self.sacrifice_hit_flag = False
-        self.sacrifice_fly_flag = False
-        self.double_play_flag = False
-        self.triple_play_flag = False
-        self.rbi_on_play = 0
-        self.wild_pitch_flag = False
-        self.passed_ball_flag = False
-        self.fielded_by = 0
-        self.bunt_flag = False
-        self.foul_flag = False
-        self.batter_destination = None
-        self.runner_on_first_destination = None
-        self.runner_on_second_destination = None
-        self.runner_on_third_destination = None
-        self.hit_location = ''
-        self.number_of_errors = 0
-        self.first_error_player = None
-        self.first_error_type = None
-        self.second_error_player = None
-        self.second_error_type = None
-        self.third_error_player = None
-        self.third_error_type = None
-        self.batter_event_flag = False  # set this to False for any events sent to database before event is complete
-        self.official_time_at_bat_flag = False
-        self._batting_event_is_official = True # this is guilty until proven innocent
+        if self.event_type != 0: # something happened on the last play
+            self.balls = 0
+            self.strikes = 0
+            self.outs_on_play = 0
+            self.hit_value = 0
+            self.pitch_sequence = ''
+            self.event_text = ''
+            self.sacrifice_hit_flag = False
+            self.sacrifice_fly_flag = False
+            self.double_play_flag = False
+            self.triple_play_flag = False
+            self.rbi_on_play = 0
+            self.wild_pitch_flag = False
+            self.passed_ball_flag = False
+            self.fielded_by = 0
+            self.bunt_flag = False
+            self.foul_flag = False
+            self.batter_destination = None
+            self.runner_on_first_destination = None
+            self.runner_on_second_destination = None
+            self.runner_on_third_destination = None
+            self.hit_location = ''
+            self.number_of_errors = 0
+            self.first_error_player = None
+            self.first_error_type = None
+            self.second_error_player = None
+            self.second_error_type = None
+            self.third_error_player = None
+            self.third_error_type = None
+            self.batter_event_flag = False  # set this to False for any events sent to database before event is complete
+            self.official_time_at_bat_flag = False
+            self._batting_event_is_official = True # this is guilty until proven innocent
         logger.info("-> %s to bat" % player_name)
 
         # If this the first batter in a new half, swap the lineups
@@ -507,6 +505,10 @@ class GameState:
         # offensive subs such as pinch runners/hitters don't have defensive positions until start of next half
         if self._next_batter_leadoff:
             self._update_lineups_and_fielders()
+            self._next_batter_leadoff = False
+            self.leadoff_flag = True
+        else:
+            self.leadoff_flag = False
 
         try:
             batter_player = self._current_batting_lineup().find_player_by_name(player_name)
@@ -520,7 +522,7 @@ class GameState:
                 replacing_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
                 logger.warning("Used roster for auto-substitution of %s for %s" % (batter_player.name, replacing_player.name))
                 self.offensive_sub(batter_player.name, replacing_player.name)
-                if not batter_player.is_sub():
+                if not batter_player.is_pending_sub():
                     # normally in an offensive sub, the player position would be PH here
                     # in the case of an auto sub (where the score keeper made a mistake),
                     # we are going to just that player the position of the old player
@@ -531,32 +533,36 @@ class GameState:
                 raise StandardError("Auto Replace Failed.  %s not found in roster" % player_name)
         except AssertionError:
             # Player order doesn't match expected order
-            logger.warning("%s %s doesn't match expected order %s" % (batter_player.name, batter_player.order, self._current_place_in_order))
+            logger.warning("%s at order %s doesn't match expected order %s" % 
+                           (batter_player.name, batter_player.order, self._current_place_in_order))
             if batter_player.atbats == 0:
                 swap_with_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
                 if swap_with_player.atbats == 0:
                     swap_with_player.order = batter_player.order
                     batter_player.order = self._current_place_in_order
-                    logger.warning("Used roster for auto-order swap of %s for %s" % (batter_player.name, swap_with_player.name))
+                    logger.warning("Used roster for auto-order swap of %s for %s" % 
+                                   (batter_player.name, swap_with_player.name))
                 else:
                     raise
             else:
                 raise
         self.batter = batter_player.name
-        self.result_batter = batter_player.name
-
+        self.batter_hand = batter_player.hand
+        
         self.defensive_position = batter_player.position
         self.lineup_position = batter_player.order
-        self.batter_hand = batter_player.hand
-        self.result_batter_hand = batter_player.hand
-        if self._next_batter_leadoff:
-            self._next_batter_leadoff = False
-            self.leadoff_flag = True
-        else:
-            self.leadoff_flag = False
+        
+        if self.event_type != 0: # something happened with the last batter
+            self.result_batter = batter_player.name
+            self.result_batter_hand = batter_player.hand
+            self.event_type = 0 # then reset it
+                
+            self.result_pitcher = self.pitcher
+            self.result_pitcher_hand = self.pitcher_hand
+        
 
-        if self._next_batter_pinch:
-            self._next_batter_pinch = False
+        if batter_player.is_pinch_hitter():
+            batter_player.set_pinch_hitter(False)
             self.pinch_hit_flag = True
         else:
             self.pinch_hit_flag = False
@@ -1195,20 +1201,18 @@ class GameState:
 
         self._update_position_attributes_with_player( self._current_fielding_roster().find_player_by_name(new_player_name))
 
-    def _update_position_attributes_with_player(self, new_player, responsible_pitcher = True):
+    def _update_position_attributes_with_player(self, new_player):
         """
         Update the position attributes for this new player
         
-        #WARN: this will update the pitcher and result_pitcher as well.
-        # at this time, the college scoring system does not appear to indicate mid-play 
-        # substitutions that I can detect
         """
         if new_player.position == 'P':
             self.pitcher = new_player.name
             self.pitcher_hand = new_player.hand
-            if responsible_pitcher:
+            if len(self.pitch_sequence) == 0: # if the atbat has not begun switch the result pitcher
                 self.result_pitcher = new_player.name 
                 self.result_pitcher_hand = self.pitcher_hand
+            self.pitch_sequence += '.'
         elif new_player.position == 'C':
             self.catcher = new_player.name
         elif new_player.position == '1B':
@@ -1237,7 +1241,7 @@ class GameState:
         
         new_player = self._current_batting_roster().find_player_by_name(new_player_name)    
         if replacing_name.strip() == '':
-            new_player.set_as_pending_sub()
+            new_player.set_pending_sub()
             return
         removed_player = self._current_batting_lineup().remove_player(replacing_name)
         self._current_batting_lineup().add_player(new_player)
@@ -1269,7 +1273,7 @@ class GameState:
 
         else:
             logging.info("offensive sub -- {} hitting for {}".format(new_player_name, replacing_name))
-            self._next_batter_pinch = True
+            new_player.set_pinch_hitter(True)
 
         if pinch_runner:
             new_player.set_position('PR')

@@ -2,6 +2,7 @@ import logging
 import lxml
 from bs4 import BeautifulSoup
 import os
+import json
 
 from models.playerinfo import PlayerInfo
 
@@ -56,7 +57,28 @@ def make_html_url(gameid):
     """ the html url used for parsing game.  useful for reviewing site source """
     return PS_GAME_HTML % str(gameid)
     
+#===============================================================================
+# GameID Scraping
+#===============================================================================
+
+PS_JSON_URL = "http://www.pointstreak.com/baseball/ajax/schedule_ajax.php?action=showalldates&s={}"
     
+def scrape_pointstreak_gameids(html):
+    playoff_soup = BeautifulSoup(html)
+    links = playoff_soup.find_all("a")
+    scores = [l for l in links if l.text == "final"]
+    gameids = [s.attrs["href"].split('=')[1] for s in scores]
+    return gameids
+
+def scrape_season_gameids(seasonid, cache_path=None):
+    if cache_path is None:
+        cache_path = DEFAULT_CACHE_PATH
+    LISTINGS_CACHE_PATH = os.path.join(cache_path, "listings","list_{}.json".format(seasonid))
+    season = get_cached_url(PS_JSON_URL.format(seasonid), LISTINGS_CACHE_PATH)
+    html = json.loads(season)["html"]
+    ids = scrape_pointstreak_gameids(html)
+    return ids
+
 class PointStreakScraper(GameScraper):
     def __init__(self, gameid, cache_path=None):
         self.gameid = str(gameid)
@@ -125,7 +147,11 @@ class PointStreakScraper(GameScraper):
 
         if away_pitchers:
             starting_pitcher = self._make_pitcher(is_home=False, player_dict=away_pitchers[0])
-            away_defense_player_list.update_player(starting_pitcher)
+            try:
+                away_defense_player_list.find_player_by_name(starting_pitcher.name)
+                away_defense_player_list.update_player(starting_pitcher)
+            except KeyError:
+                away_defense_player_list.insert(0, starting_pitcher)
 
         
         home_offense_player_list = self._make_players(is_home=False, player_dict_list=home_offense)
@@ -133,8 +159,11 @@ class PointStreakScraper(GameScraper):
 
         if home_pitchers:
             starting_pitcher = self._make_pitcher(is_home=True, player_dict=home_pitchers[0])
-            home_defense_player_list.update_player(starting_pitcher)
-            
+            try:
+                home_defense_player_list.find_player_by_name(starting_pitcher.name)
+                home_defense_player_list.update_player(starting_pitcher)
+            except KeyError:
+                home_defense_player_list.insert(0, starting_pitcher)
         return away_offense_player_list + away_defense_player_list, home_offense_player_list + home_defense_player_list
             
     def starting_lineups(self):
@@ -147,8 +176,12 @@ class PointStreakScraper(GameScraper):
             try:
                 away_player_list, home_player_list = self.scrape_lineup_from_seq_xml(seq)
         
-                away_lineup.update_players(away_player_list)
-                home_lineup.update_players(home_player_list)
+                for p in away_player_list:
+                    if p.position not in away_lineup.position_dict():
+                        away_lineup.update_player(p)
+                for p in home_player_list:
+                    if p.position not in home_lineup.position_dict():
+                        home_lineup.update_player(p)
                 
                 try:
                     complete = home_lineup.is_complete(raise_reason=False)
