@@ -36,8 +36,8 @@ cw_event_fields = [('0', 'Game ID', 'GAME_ID'),
  ('13', 'Result batter hand', 'RESP_BAT_HAND_CD'),
  ('14', 'Pitcher', 'PIT_ID'),
  ('15', 'Pitcher hand', 'PIT_HAND_CD'),
- ('16', 'Result pitcher', 'RESP_PIT_ID'),
- ('17', 'Result pitcher hand', 'RESP_PIT_HAND_CD'),
+ ('16', 'Result pitcher', 'RES_PIT_ID'),  #This was changed from RESP_PIT_ID (from docs) to match MLB example 
+ ('17', 'Result pitcher hand', 'RES_PIT_HAND_CD'), #This was changed from RESP_PIT_HAND_CD (from docs) to match MLB example 
  ('18', 'Catcher', 'POS2_FLD_ID'),
  ('19', 'First baseman', 'POS3_FLD_ID'),
  ('20', 'Second baseman', 'POS4_FLD_ID'),
