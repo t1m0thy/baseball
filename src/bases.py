@@ -59,7 +59,14 @@ class Bases:
 
         return "{}-{}".format(startbase, endbase)
 
-    def replace_runner(self, new_player, replacing_player, base):
-        assert(replacing_player == self.on_base(base))
+    def get_runner_base(self, player_name):
+        return self.runner_names().index(player_name) + 1
+    
+    def replace_runner(self, new_player, replacing_player, base=None):
+        if base is None:
+            base =  self.get_runner_base(replacing_player)
+        if self.on_base(base) != replacing_player:
+            raise StandardError("{} is not on base {} for {} to replace".format(replacing_player, base, new_player))
         self.remove(replacing_player)
         self.advance(new_player, base)
+        return base

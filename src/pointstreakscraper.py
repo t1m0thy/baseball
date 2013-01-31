@@ -147,11 +147,12 @@ class PointStreakScraper(GameScraper):
 
         if away_pitchers:
             starting_pitcher = self._make_pitcher(is_home=False, player_dict=away_pitchers[0])
-            try:
-                away_defense_player_list.find_player_by_name(starting_pitcher.name)
-                away_defense_player_list.update_player(starting_pitcher)
-            except KeyError:
-                away_defense_player_list.insert(0, starting_pitcher)
+            if starting_pitcher is not None:
+                try:
+                    away_defense_player_list.find_player_by_name(starting_pitcher.name)
+                    away_defense_player_list.update_player(starting_pitcher)
+                except KeyError:
+                    away_defense_player_list.insert(0, starting_pitcher)
 
         
         home_offense_player_list = self._make_players(is_home=False, player_dict_list=home_offense)
@@ -159,16 +160,17 @@ class PointStreakScraper(GameScraper):
 
         if home_pitchers:
             starting_pitcher = self._make_pitcher(is_home=True, player_dict=home_pitchers[0])
-            try:
-                home_defense_player_list.find_player_by_name(starting_pitcher.name)
-                home_defense_player_list.update_player(starting_pitcher)
-            except KeyError:
-                home_defense_player_list.insert(0, starting_pitcher)
+            if starting_pitcher is not None:
+                try:
+                    home_defense_player_list.find_player_by_name(starting_pitcher.name)
+                    home_defense_player_list.update_player(starting_pitcher)
+                except KeyError:
+                    home_defense_player_list.insert(0, starting_pitcher)
         return away_offense_player_list + away_defense_player_list, home_offense_player_list + home_defense_player_list
             
     def starting_lineups(self):
         complete = False
-        seq = 0
+        seq = 1
         away_lineup = Lineup()
         home_lineup = Lineup()
 
@@ -177,10 +179,10 @@ class PointStreakScraper(GameScraper):
                 away_player_list, home_player_list = self.scrape_lineup_from_seq_xml(seq)
         
                 for p in away_player_list:
-                    if p.position not in away_lineup.position_dict():
+                    if p.position not in away_lineup.position_dict() and p.name is not None:
                         away_lineup.update_player(p)
                 for p in home_player_list:
-                    if p.position not in home_lineup.position_dict():
+                    if p.position not in home_lineup.position_dict() and p.name is not None:
                         home_lineup.update_player(p)
                 
                 try:
@@ -250,13 +252,17 @@ class PointStreakScraper(GameScraper):
         return get_cached_url(url, cache_filename, force_reload)
 
     def _make_pitcher(self, is_home, player_dict):
-        return Player(player_dict.get("Name"),
+        new_player = Player(player_dict.get("Name"),
                                   player_dict.get("Number"),
                                   player_dict.get("Order"),
                                   constants.P,
                                   player_dict.get("Hand"),
                                   iddict={"pointstreak": None})
-
+        if new_player.name is not None:
+            new_player.name = new_player.name.replace("&apos;","'").replace("_apos;","'")
+            return new_player
+        else:
+            return None
     def _make_players(self, is_home, player_dict_list):
         out = PlayerList()
         for player_dict in player_dict_list:
@@ -268,6 +274,7 @@ class PointStreakScraper(GameScraper):
                                       player_dict.get("Hand"),
                                       iddict={"pointstreak": None})
                 if new_player.name is not None:
+                    new_player.name = new_player.name.replace("&apos;","'").replace("_apos;","'")
                     out.add_player(new_player)
             except (AttributeError, KeyError):
                 logger.error("making Player from dict = %s" % player_dict)
@@ -374,7 +381,7 @@ class PSPRawEventXML(RawEvent):
         if self.is_sub():
             return StandardError("No batter for substitution event")
         else:
-            return self._batter_name.replace("&apos;","'")
+            return self._batter_name.replace("&apos;","'").replace("_apos;","'")
     def batter_number(self):
         if self.is_sub():
             return StandardError("No batter for substitution event")
@@ -382,7 +389,7 @@ class PSPRawEventXML(RawEvent):
             return self._batter_number
 
     def text(self):
-        return self._text.replace("&apos;","'")
+        return self._text.replace("&apos;","'").replace("_apos;","'")
 
     def title(self):
         if self.is_sub():

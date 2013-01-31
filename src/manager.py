@@ -12,11 +12,13 @@ from sqlalchemy.orm import sessionmaker
 from models import event
 
 
-def import_game(gameid, cache_path=None):
+def import_game(gameid, cache_path=None, game=None):
     gameid = str(gameid)
+
     scraper = pss.PointStreakScraper(gameid, cache_path)
 
-    game = gamestate.GameState()
+    if game is None:
+        game = gamestate.GameState()
     game.home_team_id = scraper.home_team()
     game.visiting_team = scraper.away_team()
     game.game_id = gameid
@@ -36,6 +38,7 @@ def import_game(gameid, cache_path=None):
     #TODO: the game wrapper for point streak should be instanced here...
     # it might make sense to just instance a new parser for each game.
     names_in_game = [p.name.replace("_apos;",'\'').replace("&apos;",'\'') for p in away_roster + home_roster]
+    print names_in_game
     parser = psp.PointStreakParser(game, names_in_game)
     
     #=======================================================================
@@ -48,6 +51,7 @@ def import_game(gameid, cache_path=None):
             try:
                 if not raw_event.is_sub():
                     game.new_batter(raw_event.batter())
+                logger.debug("Parsing: {}".format(raw_event.text()))
                 parser.parse_event(raw_event.text())
             except pp.ParseException, pe:
                 try:

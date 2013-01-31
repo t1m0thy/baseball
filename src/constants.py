@@ -258,5 +258,6 @@ class PARSE_ADVANCE:
     WILD_PITCH = "wild pitch"
     UNKNOWN = "unknown"
     DROPPED_THIRD_STRIKE = "dropped 3rd strike"
-
+    BALK = "balk"
+    
 MAX_ASSIST_COUNT = 10

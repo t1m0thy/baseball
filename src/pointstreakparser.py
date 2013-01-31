@@ -25,9 +25,7 @@ class PointStreakParser:
         # Names
         #=======================================================================
         
-        name_prefix = pp.Keyword('St.')
-        name_suffix = pp.Keyword("jr", caseless=True) | \
-                        pp.Keyword("sr", caseless=True)
+        player_no_num = None
         if self.player_names:                    
             player_no_num = pp.Keyword(self.player_names[0], caseless=True)
             for name in self.player_names[1:]:
@@ -35,10 +33,17 @@ class PointStreakParser:
             for name in self.player_names:
                 if "'" in name:
                     version = "&apos;".join(name.split("'"))
+                    version2 = "_apos;".join(name.split("'"))
                     kw = pp.Keyword(version, caseless=True)
                     player_no_num |= kw
+                    kw2 = pp.Keyword(version2, caseless=True)
+                    player_no_num |= kw2
+        
+        catch_all = pp.OneOrMore(pp.Word(pp.alphas+'-'))
+        if player_no_num is None:
+            player_no_num = catch_all
         else:
-            player_no_num = pp.Word(pp.alphas + '.'+'-') + pp.Optional(name_prefix) + pp.Word(pp.alphas+'-') + pp.Optional(name_suffix)
+            player_no_num |= catch_all
         player = (pp.Word(pp.nums).setResultsName(constants.PARSING_PLAYER.NUMBER) + player_no_num.setResultsName(constants.PARSING_PLAYER.NAME)).setResultsName(constants.PARSING.PLAYER)
 
 
@@ -77,9 +82,9 @@ class PointStreakParser:
         #======================================================================
         pickoff_attempt = (pp.Keyword("Pickoff attempt at") +
                            pp.OneOrMore(pp.Word(pp.alphanums)).setResultsName(constants.PARSING.BASE) +
-                            left_paren +
+                            left_paren + pp.Optional(
                             position.setResultsName(constants.PARSE_PITCHING.THROW_POSITION) +
-                            pp.Keyword("to") +
+                            pp.Keyword("to")) +
                             position.setResultsName(constants.PARSE_PITCHING.CATCH_POSITION) +
                             right_paren
                            ).setParseAction(self.gamewrap.pickoff)
@@ -94,23 +99,26 @@ class PointStreakParser:
         #  Outs
         #===============================================================================
         foul = pp.Optional(pp.CaselessLiteral('F').setResultsName(constants.PARSING_OUTS.FOUL))
+        pop = pp.CaselessLiteral("P") + pp.Word(pp.nums).setResultsName(constants.PARSING.POSITION)
         unassisted_out = (pp.Word(pp.nums).setResultsName(constants.PARSING.POSITION) + pp.CaselessLiteral("U")).setResultsName(constants.PARSING_OUTS.UNASSISTED)
         line_drive = (pp.CaselessLiteral("L") + pp.Word(pp.nums).setResultsName(constants.PARSING.POSITION) + foul).setResultsName(constants.PARSING_OUTS.LINE_DRIVE)
-        popup = (pp.CaselessLiteral("P") + pp.Word(pp.nums).setResultsName(constants.PARSING.POSITION) + foul).setResultsName(constants.PARSING_OUTS.POPUP)
-        thrown_out = pp.delimitedList(pp.Word(pp.nums), "-").setResultsName(constants.PARSING_OUTS.THROWN_OUT)
+        popup = ((foul + pop) | (pop + foul)).setResultsName(constants.PARSING_OUTS.POPUP)
+        thrown_out = (pp.delimitedList(pp.Word(pp.nums), "-")+pp.Optional(dash)).setResultsName(constants.PARSING_OUTS.THROWN_OUT)
         double_play = pp.CaselessLiteral("DP").setResultsName(constants.PARSING_OUTS.DOUBLE_PLAY)
         triple_play = pp.CaselessLiteral("TP").setResultsName(constants.PARSING_OUTS.TRIPLE_PLAY)
         picked_off = pp.CaselessLiteral("PO").setResultsName(constants.PARSING_OUTS.PICK_OFF)
         sacrifice_hit = pp.CaselessLiteral("SH").setResultsName(constants.PARSING_OUTS.SACRIFICE)
         dropped_third_strike = (pp.CaselessLiteral("KS")).setResultsName(constants.PARSING_OUTS.DROPPED_THIRD)
         caught_stealing = (pp.CaselessLiteral("CS")).setResultsName(constants.PARSING_OUTS.CAUGHT_STEALING)
-        strike_out = (pp.Keyword("Strike Out", caseless=True) +
-                      pp.Optional(pp.Keyword("swinging")).setResultsName(constants.PARSING_OUTS.SWINGING)
+        strike_out = ((pp.Keyword("Strike Out", caseless=True) +
+                       pp.Optional(pp.Keyword("swinging")).setResultsName(constants.PARSING_OUTS.SWINGING)) | \
+                      (pp.CaselessLiteral("K") + pp.Optional(double_play))
                       ).setResultsName(constants.PARSING_OUTS.STRIKE_OUT)
         fly_out = (pp.Keyword("Fly out to", caseless=True) + pp.Optional(pp.Keyword("the")) +
                    (position | location).setResultsName(constants.PARSING.POSITION) +
                    pp.Optional(pp.Keyword("in foul territory", caseless=True).setResultsName(constants.PARSING_OUTS.FOUL))
                    ).setResultsName(constants.PARSING_OUTS.FLY_OUT)
+                   
         sacrifice_fly = (pp.Keyword("sacrifice fly to", caseless=True).setResultsName(constants.PARSING_OUTS.SACRIFICE)
                          + position.setResultsName(constants.PARSING.POSITION)).setResultsName(constants.PARSING_OUTS.FLY_OUT)
         possibles = double_play | triple_play | \
@@ -141,7 +149,7 @@ class PointStreakParser:
                         location.setResultsName(constants.PARSING.LOCATION)
                         )
         wild_pitch = pp.Keyword("wild pitch", caseless=True).setResultsName(constants.PARSE_ADVANCE.WILD_PITCH)
-        player_num = pp.Word(pp.nums).setResultsName(constants.PARSE_ADVANCE.PLAYER_NUM) + pp.Optional(pp.Keyword("bu"))
+        
         single = (pp.Keyword("single", caseless=True) +
                   pp.Optional(hit_location)
                   ).setResultsName(constants.PARSE_ADVANCE.SINGLE)
@@ -154,32 +162,35 @@ class PointStreakParser:
         home_run = (pp.Keyword("home run", caseless=True) +
                   pp.Optional(hit_location)
                   ).setResultsName(constants.PARSE_ADVANCE.HOME_RUN)
-
+        balk = pp.Keyword("balk", caseless=True).setResultsName(constants.PARSE_ADVANCE.BALK)
         dropped_third_strike = pp.Keyword("dropped 3rd strike", caseless=True).setResultsName(constants.PARSE_ADVANCE.DROPPED_THIRD_STRIKE)
         fielders_choice = pp.Keyword("fielder's choice", caseless=True).setResultsName(constants.PARSE_ADVANCE.FIELDERS_CHOICE)
         hit_by_pitch = pp.Keyword("hit by pitch", caseless=True).setResultsName(constants.PARSE_ADVANCE.HIT_BY_PITCH)
         walk = pp.Keyword("walk", caseless=True).setResultsName(constants.PARSE_ADVANCE.WALK)
-        stolen_base = pp.Keyword("stolen base", caseless=True).setResultsName(constants.PARSE_ADVANCE.STOLEN_BASE)
+        stolen_base = ((pp.Word(pp.nums) + pp.Keyword("SB", caseless=True)) | pp.Keyword("stolen base", caseless=True)).setResultsName(constants.PARSE_ADVANCE.STOLEN_BASE)
         error = ((pp.Keyword("error by the") + position.setResultsName(constants.PARSING.POSITION)
                   ) | \
                 (pp.Optional(pp.Keyword("SAC", caseless=True)) + pp.Optional(pp.Word(pp.nums)) +
                  pp.CaselessLiteral("e") +
                  pp.oneOf("1 2 3 4 5 6 7 8 9").setResultsName(constants.PARSING.POSITION) +
                  # Fielder ERror, Throwing Error, Muffed (poorly caught between fielders)
-                 pp.Optional(pp.CaselessLiteral("F") | pp.CaselessLiteral("T") | pp.CaselessLiteral("M") ).setResultsName(constants.PARSING.ERROR_TYPE) +
+                 pp.Optional(pp.CaselessLiteral("F") | pp.CaselessLiteral("D") | pp.CaselessLiteral("T") | pp.CaselessLiteral("M") ).setResultsName(constants.PARSING.ERROR_TYPE) +
                  pp.Optional(pp.Word(pp.nums))
                 )
                 ).setResultsName(constants.PARSING.ERROR)
+        
         pass_ball = pp.Keyword("pass ball", caseless=True).setResultsName(constants.PARSE_ADVANCE.PASS_BALL)
         ground_rule = (pp.Keyword("ground rule", caseless=True) +
                        pp.oneOf("single double triple", caseless=True)
                        ).setResultsName(constants.PARSE_ADVANCE.GROUND_RULE)
         throw = (pp.Literal("T") + pp.Word(pp.nums)).setResultsName(constants.PARSE_ADVANCE.THROW)
         intentional_walk = pp.Keyword("intentional walk", caseless=True).setResultsName(constants.PARSE_ADVANCE.INTENTIONAL_WALK)
+        player_num = pp.Word(pp.nums).setResultsName(constants.PARSE_ADVANCE.PLAYER_NUM) + \
+                    pp.Optional((pp.Keyword("throw", caseless=True)) |  error |  pp.Keyword("bu"))
         unknown = pp.OneOrMore(pp.Word(pp.alphanums)).setResultsName(constants.PARSE_ADVANCE.UNKNOWN)
         empty = pp.Empty().setResultsName(constants.PARSE_ADVANCE.UNKNOWN)
         
-        advance_desc = left_paren + (wild_pitch | single | double | triple | home_run | dropped_third_strike | \
+        advance_desc = left_paren + (balk | wild_pitch | single | double | triple | home_run | dropped_third_strike | \
                                        fielders_choice | hit_by_pitch | throw | walk | stolen_base | \
                                        error | player_num | pass_ball | ground_rule | intentional_walk | unknown | empty
                                        ) + right_paren
@@ -223,7 +234,7 @@ class PointStreakParser:
         dh_sub.setParseAction(self.gamewrap.parse_defensive_sub)
 
         pitching_sub = pp.Keyword("Pitching Substitution.") + new_player + \
-                       (
+                       pp.Optional(
                         (pp.Keyword("subs for") + replacing) | \
                         (pp.Keyword("moves to", caseless=True) + position.setResultsName(constants.PARSING.POSITION))
                         ) + period

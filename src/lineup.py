@@ -1,4 +1,5 @@
 from constants import POSITIONS, DH, P, POSITION_LOOKUP
+import difflib
 
 class LineupError(Exception):
     pass
@@ -21,6 +22,7 @@ class Player:
         """
         self._needs_to_sub = False
         self._pinch_hitter = False
+        self._replacing_field_position = None
         try:
             name = name.strip()
             if ',' in name:
@@ -76,35 +78,43 @@ class Player:
                 diffs[k] = (v, vars(other)[k])
         return diffs
     
-    def calc_match_score(self, other):
-        points = 0
-        if self.name == other.name:
-            points += 4
-        elif self.name is not None:
-            myfirst, mylast = self.name.split(' ', 1)
-            otherfirst, otherlast = other.name.split(' ', 1)
-            if mylast.lower() == otherlast.lower():
-                points += 2
-            try:
-                if myfirst[0].lower() == otherfirst[0].lower():
-                    points += 1
-            except IndexError:
-                print "{} vs {}".format(myfirst, other.name)
-                pass
-        if self.number == other.number:
-            points += 1
-        if self.position == other.position:
-            points += 1
-        return points
+#    def calc_match_score(self, other):
+#        points = 0
+#        if self.name == other.name:
+#            points += 4
+#        elif self.name is not None:
+#            names = self.name.split(' ', 1)
+#            if len(names) == 2:
+#                myfirst, mylast = names
+#            else:
+#                mylast = names
+#            names = other.name.split(' ', 1)
+#            if len(names) == 2:
+#                otherfirst, otherlast = names
+#            else:
+#                otherlast = names            
+#            if mylast.lower() == otherlast.lower():
+#                points += 2
+#                try:
+#                    if myfirst[0].lower() == otherfirst[0].lower():
+#                        points += 1
+#                except IndexError:
+#                    pass
+#
+#        if self.number == other.number:
+#            points += 1
+#        if self.position == other.position:
+#            points += 1
+#        return points
             
     def find_closest(self, player_list):
-        match_scores = [self.calc_match_score(other) for other in player_list]
-        best_score = max(match_scores)
-        winner_count = match_scores.count(best_score)
+        other_names = [other.name for other in player_list]
+        matches = difflib.get_close_matches(self.name, other_names, n=1, cutoff=0.6)
+        winner_count = len(matches)
         if winner_count == 1:
-            return player_list[match_scores.index(best_score)]
+            return player_list[other_names.index(matches[0])]
         else:
-            raise ValueError("No single good match.  Tie between {} entries.  player {}".format(winner_count, self))
+            raise ValueError("No single good match.  Tie between {} for player {}".format(matches, self.name))
 
     def set_pending_sub(self, set_to=True):
         self._needs_to_sub = set_to
@@ -118,6 +128,16 @@ class Player:
     def is_pinch_hitter(self):
         return self._pinch_hitter
     
+    def set_replacing_field_position(self, position):
+        """
+        when a player pinch hits, sometimes their fielding position isn't clarified, 
+        or it's clarified late in the next inning.  this is a marker for their likely field position if
+        it's not specified
+        """
+        self._replacing_field_position = position
+    
+    def get_replacing_field_position(self):
+        return self._replacing_field_position
             
 class PlayerList(list):
     """
@@ -161,7 +181,7 @@ class PlayerList(list):
         """
         my_player_names = [p.name for p in self]
         if player.name is None:
-            raise KeyError("All Players must have names")
+            raise StandardError("All Players must have names")
         if player.name not in my_player_names:
             self.append(player)
         else:
@@ -173,6 +193,10 @@ class PlayerList(list):
         for p in self:
             if p.name == name:
                 return p
+        for p in self:
+            if p.name.split(' ')[-1] == name:
+                return p
+
         raise KeyError("No player found with name %s" % name)
 
     def find_player_by_number(self, number):

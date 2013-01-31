@@ -3,7 +3,7 @@ import os
 
 TODO = "TODO"
 DONE = "> done"
-ERROR = "> error"
+ERROR = "x error"
 DELETE = "DELETE"
 
 class JobManager:

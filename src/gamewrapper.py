@@ -23,8 +23,9 @@ class GameWrapper:
 
     def pickoff(self, text, location, tokens):
         base = ' '.join(tokens[constants.PARSING.BASE])
-        throw_position = tokens[constants.PARSE_PITCHING.THROW_POSITION]
-        catch_position = tokens[constants.PARSE_PITCHING.CATCH_POSITION]
+        
+        throw_position = tokens.get(constants.PARSE_PITCHING.THROW_POSITION, "Pitcher")
+        catch_position = tokens.get(constants.PARSE_PITCHING.CATCH_POSITION)
         self._game.pitch_pickoff_attempt(base, throw_position, catch_position)
 
     def swinging_strike(self, *args):
@@ -48,7 +49,6 @@ class GameWrapper:
         player_name = tokens[constants.PARSING.PLAYER][constants.PARSING_PLAYER.NAME]
         if type(player_name) == list:
             player_name = ' '.join(player_name)
-        player_name = player_name.replace("&apos;","'")
         #print "PUTOUT", player_name
         description = tokens[constants.PARSING.DESCRIPTION]
         position = description.get(constants.PARSING.POSITION)
@@ -167,6 +167,8 @@ class GameWrapper:
             self._game.advance_on_walk(player_name, intentional=False)
         elif constants.PARSE_ADVANCE.DROPPED_THIRD_STRIKE in description:
             self._game.advance_on_dropped_third_strike(player_name)
+        elif constants.PARSE_ADVANCE.BALK in description:
+            self._game.advance_on_balk(player_name, base)
         elif constants.PARSE_ADVANCE.PLAYER_NUM in description:
             batter_number = description.get(constants.PARSE_ADVANCE.PLAYER_NUM, None)
             self._game.advance_from_batter(player_name, base, batter_number)

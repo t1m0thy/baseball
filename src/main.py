@@ -2,6 +2,7 @@ import logging
 
 import setuplogger
 import manager
+import lineup
 from jobmanager import JobManager
 import pointstreakscraper as pss
 
@@ -53,6 +54,10 @@ else:
     try:
         process_one(options.game)
         print "PARSING COMPLETE"
+    except lineup.LineupError:
+        print "PROBLEM WITH {}".format(pss.make_xml_seq_url(options.game, 0))
+        raise
+        
     except:
         print "PROBLEM WITH {}".format(pss.make_html_url(options.game))
         raise
