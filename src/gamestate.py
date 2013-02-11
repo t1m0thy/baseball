@@ -350,7 +350,7 @@ class GameState:
         self.pitcher = fielder_pos_dict['P']
         self.result_pitcher = self.pitcher
         player_pitcher = self.fielding_lineup.find_player_by_name(self.pitcher)
-        self.pitcher_hand = player_pitcher.hand
+        self.pitcher_hand = player_pitcher.throw_hand
         self.result_pitcher_hand = self.pitcher_hand
 
         # don't include pitchers in missing fielders. That has to throw an error
@@ -604,14 +604,14 @@ class GameState:
             else:
                 raise
         self.batter = batter_player.name
-        self.batter_hand = batter_player.hand
+        self.batter_hand = batter_player.bat_hand
         
         self.defensive_position = batter_player.position
         self.lineup_position = batter_player.order
         
         if self.event_type != 0: # something happened with the last batter
             self.result_batter = batter_player.name
-            self.result_batter_hand = batter_player.hand
+            self.result_batter_hand = batter_player.bat_hand
             self.event_type = 0 # then reset it
                 
             self.result_pitcher = self.pitcher
@@ -1286,7 +1286,7 @@ class GameState:
             self.repair_missing_fielder(new_player.position, new_player.name)
         if new_player.position == 'P':
             self.pitcher = new_player.name
-            self.pitcher_hand = new_player.hand
+            self.pitcher_hand = new_player.throw_hand
             if len(self.pitch_sequence) == 0: # if the atbat has not begun switch the result pitcher
                 self.result_pitcher = new_player.name 
                 self.result_pitcher_hand = self.pitcher_hand

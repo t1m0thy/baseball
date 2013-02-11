@@ -13,7 +13,7 @@ class Name(str):
         return not self.__eq__(other)
     
 class Player:
-    def __init__(self, name, number=None, order=None, position=None, hand=None, iddict={}):
+    def __init__(self, name, number=None, order=None, position=None, bat_hand=None, throw_hand=None, iddict={}):
         """
         setup Player object
         
@@ -39,7 +39,9 @@ class Player:
         except TypeError:
             self.order = None
         self.position = self._verified_position(position)
-        self.hand = hand
+        self.bat_hand = bat_hand
+        self.throw_hand = throw_hand
+        
         self.iddict = iddict
         self.atbats = 0
         #TODO: add throwing hand vs. batting hand
@@ -55,7 +57,7 @@ class Player:
         return len(self.diff(other)) == 0 
 
     def __str__(self):
-        return "%2s %3s %s %3s %2s" % (self.order, self.number, str(self.name).ljust(18), self.position, self.hand)
+        return "%2s %3s %s %3s %2s" % (self.order, self.number, str(self.name).ljust(18), self.position, self.bat_hand)
 
     def set_position(self, position):
         self.position = self._verified_position(position)

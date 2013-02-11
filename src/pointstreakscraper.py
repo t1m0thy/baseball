@@ -341,9 +341,12 @@ class PointStreakScraper(GameScraper):
             try:
                 player_id = self.get_player_id(is_home, player)
                 player_info = self.get_player_info(player_id)
-                player.hand = player_info.THROW_HAND
+                #TODO: I don't don't if 'P' in POSITIONS is safe or correct - TDH 2-2013
+                player.throw_hand = player_info.THROW_HAND
+                player.bat_hand = player_info.BAT_HAND
             except:
-                player.hand = '?'
+                player.bat_hand = '?'
+                player.throw_hand = '?'
                 logger.exception("Unable to find more info on {}".format(player.name))
                 
 
