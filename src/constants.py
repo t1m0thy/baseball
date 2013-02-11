@@ -259,5 +259,6 @@ class PARSE_ADVANCE:
     UNKNOWN = "unknown"
     DROPPED_THIRD_STRIKE = "dropped 3rd strike"
     BALK = "balk"
-    
+    EXTRA_BASES = "extra bases"
+
 MAX_ASSIST_COUNT = 10
