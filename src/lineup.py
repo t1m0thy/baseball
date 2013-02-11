@@ -107,10 +107,14 @@ class Player:
 #            points += 1
 #        return points
             
-    def find_closest(self, player_list):
+    def find_closest_name(self, player_list):
         other_names = [other.name for other in player_list]
         matches = difflib.get_close_matches(self.name, other_names, n=1, cutoff=0.6)
         winner_count = len(matches)
+        if winner_count == 0:
+            matches = difflib.get_close_matches(self.name.split()[-1], other_names, n=1, cutoff=0.6)
+            winner_count = len(matches)
+            
         if winner_count == 1:
             return player_list[other_names.index(matches[0])]
         else:
