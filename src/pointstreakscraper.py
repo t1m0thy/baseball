@@ -36,7 +36,7 @@ DIV_ID_PITCHING_STATS = "psbb_pitchingStats"
 DIV_ID_PLAYBYPLAY = "psbb_playbyplay"
 DIV_ID_GAME_SUMMARY = "psbb_game_summary"
 
-MAX_EVENTS_COUNT = 30
+MAX_EVENTS_COUNT = 40
 
 
 class ScrapeError(Exception):
@@ -290,7 +290,7 @@ class PointStreakScraper(GameScraper):
         else:
             search_list = self._away_html_player_list
         try:
-            bestmatch = player.find_closest(search_list)
+            bestmatch = player.find_closest_name(search_list)
             return bestmatch.iddict.get("pointstreak")
         except:
             logger.error("Failed to find match for:\n{} \nin list:\n{}".format(player, search_list))
