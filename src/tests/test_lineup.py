@@ -104,29 +104,29 @@ class TestCaseComplete(unittest.TestCase):
         
     def test_closest_match(self):
         test = Player("Wade Boggs", None, 1, None, LEFT)
-        result = test.find_closest(self.lineup)
+        result = test.find_closest_name(self.lineup)
         self.assertEqual(result, self.lineup.find_player_by_number(26))
         
     def test_closest_match2(self):
         test = Player("Boggs, W", None, None, None, None)
-        result = test.find_closest(self.lineup)
+        result = test.find_closest_name(self.lineup)
         self.assertEqual(result, self.lineup.find_player_by_number(26))
         
     def test_closest_match3(self):
         test = Player(None, 26, None, None, None)
-        result = test.find_closest(self.lineup)
+        result = test.find_closest_name(self.lineup)
         self.assertEqual(result, self.lineup.find_player_by_number(26))
 
     def test_closest_match4(self):
         test = Player(None, None, None, None, None)
-        self.assertRaises(ValueError, test.find_closest, self.lineup)
+        self.assertRaises(ValueError, test.find_closest_name, self.lineup)
 
     def test_closest_match5(self):
         test = Player(None, None, None, None, LEFT)
-        self.assertRaises(ValueError, test.find_closest, self.lineup)
+        self.assertRaises(ValueError, test.find_closest_name, self.lineup)
 
     def test_closest_match6(self):
         test = Player(None, None, None, "3B", None)
-        result = test.find_closest(self.lineup)
+        result = test.find_closest_name(self.lineup)
         self.assertEqual(result, self.lineup.find_player_by_number(26))
         
