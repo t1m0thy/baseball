@@ -456,6 +456,10 @@ class GameState:
         self.fielder_with_ninth_assist = None
         self.fielder_with_tenth_assist = None
 
+        self.stolen_base_for_runner_on_first = False
+        self.stolen_base_for_runner_on_second = False
+        self.stolen_base_for_runner_on_third = False
+        
         self.event_text = ''
         self._advancing_event_text = ''
         self.event_number += 1
@@ -1021,7 +1025,6 @@ class GameState:
             self.pitch_sequence += constants.PITCH_CHARS.PLAY_NOT_INVOLVING_THE_BATTER
         self.event_type = constants.EVENT_CODE.PASSED_BALL
         self._advance_player(player_name, base)
-        #self._record_event(batting_event = False)
         self._pending_runner_event = True
 
     def advance_on_stolen_base(self, player_name, base):
@@ -1038,15 +1041,12 @@ class GameState:
             self.event_text += "SB" + str(constants.BASE_LOOKUP[base])
         self.event_type = constants.EVENT_CODE.STOLEN_BASE
         self._advance_player(player_name, base, earned=False)
-        #self._record_event(batting_event=False)
         self._pending_runner_event = True
 
         self.pitch_sequence += constants.PITCH_CHARS.PLAY_NOT_INVOLVING_THE_BATTER
 
         # reset the stolen base flags now that event has been sent
-        self.stolen_base_for_runner_on_first = False
-        self.stolen_base_for_runner_on_second = False
-        self.stolen_base_for_runner_on_third = False
+
 
     def advance_on_throw(self, player_name, base):
         self._record_any_pending_runner_event()
