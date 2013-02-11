@@ -61,7 +61,7 @@ class GameWrapper:
             self._game.out_strike_out(player_name,
                                       constants.PARSING_OUTS.SWINGING in description)
         elif constants.PARSING_OUTS.CAUGHT_STEALING in description:
-            self._game.out_caught_stealing(player_name, tokens,
+            self._game.out_caught_stealing(player_name, description.get(constants.PARSING_OUTS.THROWN_OUT),
                                            constants.PARSING_OUTS.DOUBLE_PLAY in description)
         elif constants.PARSING_OUTS.UNASSISTED in description or constants.PARSING_OUTS.LINE_DRIVE in description:
             self._game.out_unassisted(player_name,
