@@ -38,8 +38,8 @@ class GameWrapper:
         self._game.pitch_ball()
 
     def dropped_foul(self, text, location, tokens):
-        error = tokens.get(constants.PARSING.ERROR, None)
-        error_position = tokens.get(constants.PARSING.POSITION, None)
+        error = tokens.get(constants.PARSING.ERROR)
+        error_position = tokens.get(constants.PARSING.POSITION)
         self._game.pitch_foul(True, error, error_position)
 
     def foul(self,  text, location, tokens):
@@ -53,14 +53,7 @@ class GameWrapper:
         description = tokens[constants.PARSING.DESCRIPTION]
         position = description.get(constants.PARSING.POSITION)
         logger.info(text)
-        if constants.PARSING_OUTS.THROWN_OUT in description:
-            self._game.out_thrown_out(player_name,
-                                      description[constants.PARSING_OUTS.THROWN_OUT],
-                                      constants.PARSING_OUTS.SACRIFICE in description,
-                                      constants.PARSING_OUTS.DOUBLE_PLAY in description,
-                                      constants.PARSING_OUTS.TRIPLE_PLAY in description
-                                      )
-        elif constants.PARSING_OUTS.FLY_OUT in description:
+        if constants.PARSING_OUTS.FLY_OUT in description:
             self._game.out_fly_out(player_name,
                                    position,
                                    constants.PARSING_OUTS.SACRIFICE in description)
@@ -79,6 +72,14 @@ class GameWrapper:
             self._game.out_popup(player_name,
                                  position,
                                  constants.PARSING_OUTS.FOUL in description)
+        elif constants.PARSING_OUTS.THROWN_OUT in description:
+            self._game.out_thrown_out(player_name,
+                                      description[constants.PARSING_OUTS.THROWN_OUT],
+                                      constants.PARSING_OUTS.SACRIFICE in description,
+                                      constants.PARSING_OUTS.DOUBLE_PLAY in description,
+                                      constants.PARSING_OUTS.TRIPLE_PLAY in description
+                                      )
+
         else:
             logger.error("Unknown Putout Description" + str(description))
             self._game._out(player_name)
@@ -99,9 +100,12 @@ class GameWrapper:
             self._game.offensive_sub(new_player_name, replacing_name)
 
     def parse_defensive_sub(self, text, location, tokens):
-        new_player_name = tokens[constants.PARSING.NEW_PLAYER][1:]
-        replacing_name = tokens.get(constants.PARSING.REPLACING, [])# strip space to empty string if nothing there
-        
+        print text
+        print tokens.asDict()
+        new_player_name = tokens.get(constants.PARSING.NEW_PLAYER,{}).get(constants.PARSING_PLAYER.NAME, [])
+        replacing_name = tokens.get(constants.PARSING.REPLACING)
+        if type(replacing_name) == dict:
+            replacing_name = replacing_name.get(constants.PARSING_PLAYER.NAME, [])
         if type(new_player_name) == list:
             new_player_name = ' '.join(new_player_name).strip() 
         if type(replacing_name) == list:
@@ -143,18 +147,21 @@ class GameWrapper:
         elif constants.PARSE_ADVANCE.THROW in description:
             self._game.advance_on_throw(player_name, base)
         elif constants.PARSE_ADVANCE.SINGLE in description:
-            self._game.hit_single(player_name, location = description.get(constants.PARSING.LOCATION, None))
+            self._game.hit_single(player_name,
+                                  base, 
+                                  location = description.get(constants.PARSING.LOCATION),
+                                  )
         elif constants.PARSE_ADVANCE.DOUBLE in description:
-            self._game.hit_double(player_name, location = description.get(constants.PARSING.LOCATION, None))
+            self._game.hit_double(player_name, location = description.get(constants.PARSING.LOCATION))
         elif constants.PARSE_ADVANCE.TRIPLE in description:
-            self._game.hit_triple(player_name, location = description.get(constants.PARSING.LOCATION, None))
+            self._game.hit_triple(player_name, location = description.get(constants.PARSING.LOCATION))
         elif constants.PARSE_ADVANCE.HOME_RUN in description:
-            self._game.hit_home_run(player_name, location = description.get(constants.PARSING.LOCATION, None))
+            self._game.hit_home_run(player_name, location = description.get(constants.PARSING.LOCATION))
         elif constants.PARSING.ERROR in description:
             self._game.advance_on_error(player_name,
                                         base,
                                         description[constants.PARSING.POSITION],
-                                        description.get(constants.PARSING.ERROR_TYPE, None))
+                                        description.get(constants.PARSING.ERROR_TYPE))
         elif constants.PARSE_ADVANCE.FIELDERS_CHOICE in description:
             self._game.advance_on_fielders_choice(player_name, base)
         elif constants.PARSE_ADVANCE.GROUND_RULE in description:
@@ -170,7 +177,7 @@ class GameWrapper:
         elif constants.PARSE_ADVANCE.BALK in description:
             self._game.advance_on_balk(player_name, base)
         elif constants.PARSE_ADVANCE.PLAYER_NUM in description:
-            batter_number = description.get(constants.PARSE_ADVANCE.PLAYER_NUM, None)
+            batter_number = description.get(constants.PARSE_ADVANCE.PLAYER_NUM)
             self._game.advance_from_batter(player_name, base, batter_number)
         else:
             #raise StandardError("Parsing Error from unknown Advance description: " + ' '.join(description))

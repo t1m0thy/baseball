@@ -510,6 +510,8 @@ class GameState:
     #  NEW CALLS
     #------------------------------------------------------------------------------
     def new_batter(self, player_name):
+        if self.batter == player_name:
+            return
         if self.event_type != 0: # something happened on the last play
             self.balls = 0
             self.strikes = 0
@@ -564,17 +566,15 @@ class GameState:
             logger.warning(player_name + " not found in lineup for atbat")
             try:
                 batter_player = self._current_batting_roster().find_player_by_name(player_name)
-                replacing_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
-                logger.warning("Used roster for auto-substitution of %s for %s" % (batter_player.name, replacing_player.name))
-                self.offensive_sub(batter_player.name, replacing_player.name)
-                
-                batter_player.set_replacing_field_position(replacing_player.position)
-                #if not batter_player.is_pending_sub():
-                    # normally in an offensive sub, the player position would be PH here
-                    # in the case of an auto sub (where the score keeper made a mistake),
-                    # we are going to just that player the position of the old player
-                    # this is because there likely wont be a defensive sub either to put this new player in the correct position
-                #    batter_player.set_position(replacing_player.position)
+                try:
+                    # there is someone to replace
+                    replacing_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
+                    logger.warning("Used roster for auto-substitution of %s for %s" % (batter_player.name, replacing_player.name))
+                    self.offensive_sub(batter_player.name, replacing_player.name)                    
+                    batter_player.set_replacing_field_position(replacing_player.position)
+                except KeyError:
+                    # there is nobody to replace at this order spot
+                    self._current_batting_lineup().add_player(batter_player)
 
             except KeyError:
                 raise StandardError("Auto Replace Failed.  %s not found in roster" % player_name)
@@ -583,14 +583,20 @@ class GameState:
             logger.warning("%s at order %s doesn't match expected order %s" % 
                            (batter_player.name, batter_player.order, self._current_place_in_order))
             if batter_player.atbats == 0:
-                old_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
-                if old_player.atbats == 0 or batter_player.is_pending_sub():
-                    old_player.order = batter_player.order
+                try:
+                    old_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
+                    if old_player.atbats == 0 or batter_player.is_pending_sub():
+                        old_player.order = batter_player.order
+                        batter_player.order = self._current_place_in_order
+                        self._current_batting_lineup().remove_player(old_player.name)
+                        logger.warning("Used roster for auto-order swap of %s for %s" % 
+                                       (batter_player.name, old_player.name))
+                    else:
+                        raise
+                except KeyError:
+                    logger.warning("No player found to replace at position {} in the order.".format(self._current_place_in_order))
                     batter_player.order = self._current_place_in_order
-                    logger.warning("Used roster for auto-order swap of %s for %s" % 
-                                   (batter_player.name, old_player.name))
-                else:
-                    raise
+
             else:
                 raise
         self.batter = batter_player.name
@@ -938,7 +944,7 @@ class GameState:
     # ADVANCE
     #------------------------------------------------------------------------------
 
-    def hit_single(self, player_name, location=None):
+    def hit_single(self, player_name, base=1, location=None):
         if self.batter != player_name:
             raise StandardError("{}\nSingle from player {} who is not current batter {}".format(self.inning_string(),
                                                                                        player_name, 
@@ -949,7 +955,11 @@ class GameState:
             self.hit_location = self.lookup_position_num(location)
         self.event_text += 'S' + str(self.hit_location)
         self.event_type = constants.EVENT_CODE.SINGLE
-        self._advance_player(player_name, 1)
+        base = constants.BASE_LOOKUP[base]
+        extra_bases = base - 1
+        if extra_bases:
+            logger.info("Single plus {} extra base".format(extra_bases))
+        self._advance_player(player_name, base)
         self.hit_value = 1
 
     def hit_double(self, player_name, location=None):
@@ -1211,14 +1221,15 @@ class GameState:
                     logger.warning("Guessing at position {} of unspecified defensive sub {}".format(position, new_player.name))            
                 if position is None or position == '':
                     position = new_player.position
-                    logger.warning("Using previous player position {} of unspecified defensive sub {}".format(position, new_player.name)) 
+                    logger.warning("Using known player position {} of unspecified defensive sub {}".format(position, new_player.name)) 
                 if position is None or position == '':
                     raise StandardError("Defensive Sub Error, no new position or replacement name")
             current_defense = self._current_fielding_lineup()
             try:
                 # player moves to new position
-                current_defense.find_player_by_name(new_player_name)
-                current_defense.set_player_position(new_player_name, position)
+                new_player = current_defense.find_player_by_name(new_player_name)
+                new_player.set_position(position)
+                new_player.set_pending_sub()
                 logging.info("{} moves to {}".format(new_player_name, position))
             except KeyError:
                 # player substitutes
@@ -1253,9 +1264,9 @@ class GameState:
                 new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
                 if position != '':
                     new_player.set_position(position)
-                new_player.order = possible_remove_player.order
             try:
                 self._current_fielding_lineup().add_player(new_player)
+                new_player.order = possible_remove_player.order # only update the order if this player is actually new to lineup
             except LineupError:
                 existing_player = self._current_fielding_roster().find_player_by_name(new_player.name)
                 existing_player.merge(new_player)
@@ -1317,8 +1328,15 @@ class GameState:
             logging.info("Offensive Sub -- {} hitting for {}".format(new_player_name, replacing_name))
             
         if replacing_name.strip() == '':
-            new_player.set_pending_sub()
-            return
+            if pinch_runner:
+                # get the player name by looking up the player on given base
+                base_num = constants.BASE_LOOKUP[base]
+                replacing_name = self._bases.on_base(base_num)
+                if replacing_name is None:
+                    raise StandardError("Pinch running for an unspecified player at a base with no runner.  nice...")
+            else:
+                new_player.set_pending_sub()
+                return
         try:
             removed_player = self._current_batting_lineup().remove_player(replacing_name)
         except KeyError:
