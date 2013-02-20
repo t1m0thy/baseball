@@ -99,7 +99,7 @@ class GameState:
         self.third_error_player = None
         self.third_error_type = None
 
-        self.batter_destination = None
+        self.batter_destination = 0
         self.runner_on_first_destination = None
         self.runner_on_second_destination = None
         self.runner_on_third_destination = None
@@ -533,7 +533,7 @@ class GameState:
             self.fielded_by = 0
             self.bunt_flag = False
             self.foul_flag = False
-            self.batter_destination = None
+            self.batter_destination = 0
             self.runner_on_first_destination = None
             self.runner_on_second_destination = None
             self.runner_on_third_destination = None
