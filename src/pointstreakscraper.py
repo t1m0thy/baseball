@@ -130,7 +130,29 @@ class PointStreakScraper(GameScraper):
         self._complete_player_profile(True, home_roster)
         return away_roster, home_roster
 
+    def _make_players(self, is_home, player_dict_list):
+        out = PlayerList()
+        for player_dict in player_dict_list:
+            try:
+                new_player = Player(player_dict.get("Name"),
+                                      player_dict.get("Number"),
+                                      player_dict.get("Order"),
+                                      player_dict.get("Position"),
+                                      player_dict.get("Hand"),
+                                      iddict={"pointstreak": None})
+                if new_player.name is not None:
+                    new_player.name = new_player.name.replace("&apos;","'").replace("_apos;","'")
+                    out.add_player(new_player)
+            except (AttributeError, KeyError):
+                logger.error("making Player from dict = %s" % player_dict)
+                raise
+        return out
+    
     def scrape_lineup_from_seq_xml(self, seq):
+        """
+        helper method for starting_lineupa method.  
+        given a sequence number, grabs the xml file, and pulls out the lineups from it
+        """
         xml = self._get_pointstreak_xml(seq)
         root = lxml.etree.fromstring(xml)
         away = root.find(".//{*}VisitingTeam")
@@ -169,6 +191,11 @@ class PointStreakScraper(GameScraper):
         return away_offense_player_list + away_defense_player_list, home_offense_player_list + home_defense_player_list
             
     def starting_lineups(self):
+        """
+        scrape the starting lineup from the sequential point streak XMl files
+        
+        loop through the xml files until a complete lineup for both teams has been established
+        """
         complete = False
         seq = 1
         away_lineup = Lineup()
@@ -263,23 +290,6 @@ class PointStreakScraper(GameScraper):
             return new_player
         else:
             return None
-    def _make_players(self, is_home, player_dict_list):
-        out = PlayerList()
-        for player_dict in player_dict_list:
-            try:
-                new_player = Player(player_dict.get("Name"),
-                                      player_dict.get("Number"),
-                                      player_dict.get("Order"),
-                                      player_dict.get("Position"),
-                                      player_dict.get("Hand"),
-                                      iddict={"pointstreak": None})
-                if new_player.name is not None:
-                    new_player.name = new_player.name.replace("&apos;","'").replace("_apos;","'")
-                    out.add_player(new_player)
-            except (AttributeError, KeyError):
-                logger.error("making Player from dict = %s" % player_dict)
-                raise
-        return out
 
     def _div_id_dict(self, element):
         return dict((d.attrs["id"], d) for d in element.findAll("div") if d.has_attr("id"))
@@ -297,6 +307,9 @@ class PointStreakScraper(GameScraper):
             raise
         
     def _update_html_player_table(self, is_home, table):
+        """
+        helper method to build player lists parsed from the html pages.
+        """
         if is_home:
             current_list = self._home_html_player_list
         else:
@@ -312,6 +325,9 @@ class PointStreakScraper(GameScraper):
                 current_list.update_player(player)
                 
     def _build_html_player_tables(self):
+        """
+        parse the rosters from the main game html page
+        """
         html = self._get_pointstreak_game_html()
         soup = BeautifulSoup(html)
         divs = self._div_id_dict(soup)

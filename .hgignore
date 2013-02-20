@@ -13,3 +13,5 @@ syntax: regexp
 ^\.pydevproject$
 syntax: regexp
 ^src/problem_games\.txt$
+syntax: regexp
+^src/pending\.yml$

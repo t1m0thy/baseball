@@ -25,7 +25,7 @@ class PointStreakParser:
         # Names
         #=======================================================================
         
-        catch_all = (pp.Word(pp.alphas+'-') + pp.OneOrMore(pp.Word(pp.alphas+'-'))).setResultsName(constants.PARSING_PLAYER.NAME)
+        catch_all = pp.OneOrMore(pp.Word(pp.alphas+'-')).setResultsName(constants.PARSING_PLAYER.NAME)
         if self.player_names:                    
             player_no_num = pp.Keyword(self.player_names[0], caseless=True)
             for name in self.player_names[1:]:

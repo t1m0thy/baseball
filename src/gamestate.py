@@ -578,10 +578,11 @@ class GameState:
                     batter_player.set_replacing_field_position(replacing_player.position)
                 except KeyError:
                     # there is nobody to replace at this order spot
+                    logger.warning("No one found to replace at order location {}".format(self._current_place_in_order))
                     self._current_batting_lineup().add_player(batter_player)
 
             except KeyError:
-                raise StandardError("Auto Replace Failed.  %s not found in roster" % player_name)
+                raise StandardError("Auto Replace Failed. %s not found in roster" % player_name)
         except AssertionError:
             # Player order doesn't match expected order
             logger.warning("%s at order %s doesn't match expected order %s" % 
@@ -589,7 +590,7 @@ class GameState:
             if batter_player.atbats == 0:
                 try:
                     old_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
-                    if old_player.atbats == 0 or batter_player.is_pending_sub():
+                    if old_player.atbats == 0 or batter_player.is_pending_sub() or batter_player.order is None:
                         old_player.order = batter_player.order
                         batter_player.order = self._current_place_in_order
                         self._current_batting_lineup().remove_player(old_player.name)
@@ -1270,6 +1271,7 @@ class GameState:
             except LineupError:
                 existing_player = self._current_fielding_roster().find_player_by_name(new_player.name)
                 existing_player.merge(new_player)
+                existing_player.set_pending_sub()
                 logger.warn("{} already in lineup.  diffs => {}".format(new_player.name, existing_player.diff(new_player)))
         
 
@@ -1348,8 +1350,11 @@ class GameState:
         if new_player not in self._current_batting_lineup():
             self._current_batting_lineup().add_player(new_player)
 
-        if pinch_runner:
+        new_player.order = removed_player.order
+        if new_player.order is None:
+            new_player.set_pending_sub()
 
+        if pinch_runner:
             base_num = constants.BASE_LOOKUP[base]
             # 1. assert that we are replacing the right guy
             # 2. set the pinch runner flag to true (I checked MLB data, and this flag is True only for
@@ -1382,6 +1387,4 @@ class GameState:
                 self.runner_on_third = new_player.name
                 self.runner_removed_for_pinch_runner_on_third = removed_player.name
 
-
-
-        new_player.order = removed_player.order
+        

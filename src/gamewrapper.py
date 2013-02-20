@@ -100,10 +100,8 @@ class GameWrapper:
             self._game.offensive_sub(new_player_name, replacing_name)
 
     def parse_defensive_sub(self, text, location, tokens):
-        print text
-        print tokens.asDict()
         new_player_name = tokens.get(constants.PARSING.NEW_PLAYER,{}).get(constants.PARSING_PLAYER.NAME, [])
-        replacing_name = tokens.get(constants.PARSING.REPLACING)
+        replacing_name = tokens.get(constants.PARSING.REPLACING, [])
         if type(replacing_name) == dict:
             replacing_name = replacing_name.get(constants.PARSING_PLAYER.NAME, [])
         if type(new_player_name) == list:

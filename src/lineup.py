@@ -65,7 +65,8 @@ class Player:
     def merge(self, other):
         """ Any attributes of player that are not None will overwrite the value of this current player.
         iddict is updates with data from player as well """
-        for attr in ["name", "number", "order", "position", "hand"]:
+        #TODO: make these special attributes special with decorators or something...
+        for attr in ["name", "number", "order", "position", "bat_hand", "throw_hand"]:
             if other.__dict__[attr] is not None:
                 self.__dict__[attr] = other.__dict__[attr]
         self.iddict.update(other.iddict)
@@ -196,6 +197,7 @@ class PlayerList(list):
             current_player.merge(player)
 
     def find_player_by_name(self, name):
+        name = name.strip()
         for p in self:
             if p.name == name:
                 return p
