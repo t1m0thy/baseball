@@ -156,23 +156,23 @@ class GameState:
         self.batting_team_id = None
         self.fielding_team_id = None
         self.half_inning = 0  # (differs_from_batting_team_if_home_team_bats_first)
-        self.start_of_half_inning_flag = False
-        self.end_of_half_inning_flag = False
+        self.start_of_half_inning_flag = None
+        self.end_of_half_inning_flag = None
         self.score_for_team_on_offense = 0
         self.score_for_team_on_defense = 0
         self.runs_scored_in_this_half_inning = 0
         self.number_of_plate_appearances_in_game_for_team_on_offense = None
         self.number_of_plate_appearances_in_inning_for_team_on_offense = None
-        self.start_of_plate_appearance_flag = False
-        self.truncated_plate_appearance_flag = False
+        self.start_of_plate_appearance_flag = None
+        self.truncated_plate_appearance_flag = None
         self.base_state_at_start_of_play = None
         self.base_state_at_end_of_play = None
-        self.batter_is_starter_flag = False
-        self.result_batter_is_starter_flag = False
+        self.batter_is_starter_flag = None
+        self.result_batter_is_starter_flag = None
         self.id_of_the_batter_on_deck = None
         self.id_of_the_batter_in_the_hold = None
-        self.pitcher_is_starter_flag = False
-        self.result_pitcher_is_starter_flag = False
+        self.pitcher_is_starter_flag = None
+        self.result_pitcher_is_starter_flag = None
         self.defensive_position_of_runner_on_first = None
         self.lineup_position_of_runner_on_first = None
         self.event_number_on_which_runner_on_first_reached_base = None
@@ -197,24 +197,24 @@ class GameState:
         self.number_of_foul_balls_in_plate_appearance = None
         self.number_of_balls_in_play_in_plate_appearance = None
         self.number_of_other_strikes_in_plate_appearance = None
-        self.number_of_runs_on_play = None
+        self.number_of_runs_on_play = 0
         self.id_of_player_fielding_batted_ball = None
-        self.force_play_at_second_flag = False
-        self.force_play_at_third_flag = False
-        self.force_play_at_home_flag = False
-        self.batter_safe_on_error_flag = False
-        self.fate_of_batter = None
-        self.fate_of_runner_on_first = None
-        self.fate_of_runner_on_second = None
-        self.fate_of_runner_on_third = None
-        self.runs_scored_in_half_inning_after_this_event = 0
+        self.force_play_at_second_flag = None
+        self.force_play_at_third_flag = None
+        self.force_play_at_home_flag = None
+        self.batter_safe_on_error_flag = None
+        self.fate_of_batter = 0 # TODO: first
+        self.fate_of_runner_on_first = 0 # TODO: first
+        self.fate_of_runner_on_second = 0 # TODO: first
+        self.fate_of_runner_on_third = 0 # TODO: first
+        self.runs_scored_in_half_inning_after_this_event = 0 # TODO: first
         self.fielder_with_sixth_assist = None
         self.fielder_with_seventh_assist = None
         self.fielder_with_eighth_assist = None
         self.fielder_with_ninth_assist = None
         self.fielder_with_tenth_assist = None
-        self.unknown_fielding_credit_flag = False
-        self.uncertain_play_flag = False
+        self.unknown_fielding_credit_flag = None
+        self.uncertain_play_flag = None
 
         #=======================================================================
         # Non Model attributes
@@ -277,7 +277,10 @@ class GameState:
     def _get_state_as_event_model(self):
         newevent = event.Event()
         for key, modelattribute in MODEL_LOOKUP_DICT.items():
-            newevent.__dict__[modelattribute] = self.__dict__[key]
+            val = self.__dict__[key]
+            if type(val) == bool:
+                val = ['F','T'][val]
+            newevent.__dict__[modelattribute] = val
         return newevent
 
     def _gamestate_from_event_model(self, event):
@@ -286,18 +289,35 @@ class GameState:
             newgame.__dict__[key] = event.__dict__[modelattribute]
         return newgame
 
+    def get_event_value(self, e, attribute_name):
+        """ 
+        for a given gamestate attribute name, lookup the corresponding 
+        value in an event mode using the MODEL_LOOKUP_DICT 
+        which is derived from eventfields.py 
+        """
+        return getattr(e, MODEL_LOOKUP_DICT[attribute_name])
+    
+    def set_event_value(self, e, attribute_name, value):
+        """ 
+        for a given gamestate attribute name, set the corresponding 
+        value in an event mode using the MODEL_LOOKUP_DICT 
+        which is derived from eventfields.py 
+        """
+        setattr(e, MODEL_LOOKUP_DICT[attribute_name], value)
+        
     def repair_missing_fielder(self, position, player_name):
         #TODO: finish
         attribute_name = self.position_attribute_names[position]
         for e in reversed(self.event_list):
-            if getattr(e, MODEL_LOOKUP_DICT["inning"]) != self.inning:
+            if self.get_event_value(e, "inning") != self.inning:
                 break
-            if getattr(e, MODEL_LOOKUP_DICT[attribute_name]) == '?':
-                setattr(e, MODEL_LOOKUP_DICT[attribute_name], player_name)
+            if self.get_event_value(e, attribute_name) == '?':
+                self.set_event_value(e, attribute_name, player_name)
             else:
                 break
         self._missing_fielders.remove(position)
             
+       
     def _record_event(self, batting_event=True):
         """
         send event to database
@@ -310,13 +330,13 @@ class GameState:
         self.batter_event_flag = batting_event
         if batting_event:
             self.official_time_at_bat_flag = self._batting_event_is_official
-
         self.event_text += self._advancing_event_text
+        self.base_state_at_end_of_play = self._bases.code()        
         self._last_event = self._get_state_as_event_model()
         self.event_list.append(self._last_event)
         logger.debug(">-- APPEND EVENT --<")
         self._apply_pending_base_runner_positions()
-        self._reset_flags()
+        self._reset_play_flags()
 
     def _record_any_pending_runner_event(self):
         if self._pending_runner_event:
@@ -325,8 +345,24 @@ class GameState:
 
     def set_previous_event_as_game_end(self):
         # in case last event was a runner event, it is still pending, so send it
+        self._update_player_fates_for_half()
         self._record_any_pending_runner_event()
         self._last_event.GAME_END_FL = True
+
+    def _update_player_fates_for_half(self):
+        for e in reversed(self.event_list):
+            if self.get_event_value(e, "bat_home_id") != self.bat_home_id:
+                break
+            fate_attribute_names = ["fate_of_batter",
+                                    "fate_of_runner_on_first",
+                                    "fate_of_runner_on_second",
+                                    "fate_of_runner_on_third"
+                                    ]
+            for fate_attribute in fate_attribute_names:
+                fate_id = self.get_event_value(e, fate_attribute)
+                if fate_id != 0:
+                    logger.debug("looking up fate id for {} = {}".format(fate_attribute, fate_id))
+                    self.set_event_value(e, fate_attribute, self._bases.fate_for(fate_id))
 
     #------------------------------------------------------------------------------
     # UTILITIES
@@ -356,17 +392,26 @@ class GameState:
         # don't include pitchers in missing fielders. That has to throw an error
         self._missing_fielders = []
         missing = self.fielding_lineup.missing_fielders()
-        for position in missing:
-            possibles = [player for player in self.fielding_lineup if player.get_replacing_field_position() == position]
-            if len(possibles) == 1:
-                new_player = possibles[0] 
-                new_player.set_position(position)
-                fielder_pos_dict[position] = new_player.name
-                logger.warning("Automatic Field Position Assignment: {} to {}".format(new_player.name, new_player.position))
-            else:
-                self._missing_fielders.append(position)
-                fielder_pos_dict[position] = '?'
-                logger.warning("{}: Missing Fielder for {}".format(self.inning_string(), position))
+        missing.sort()
+        #for position in missing:
+        if missing:
+            possibles = [player for player in self.fielding_lineup if player.get_replacing_field_position() in missing]
+            possibles_dict = dict([(player.get_replacing_field_position(), player) for player in possibles])
+            print "POSS_DICT", possibles_dict
+            possible_positions = possibles_dict.keys()
+            possible_positions.sort()
+            print "THE MATCH", possible_positions, missing
+            if possible_positions == missing:
+                for position in possibles_dict:
+                    new_player = possibles_dict[position]
+                    new_player.set_position(position)
+                    fielder_pos_dict[position] = new_player.name
+                    logger.warning("Automatic Field Position Assignment: {} to {}".format(new_player.name, new_player.position))
+            else:                
+                for position in missing:
+                    self._missing_fielders.append(position)
+                    fielder_pos_dict[position] = '?'
+                    logger.warning("{}: Missing Fielder for {}".format(self.inning_string(), position))
 
         self.catcher = fielder_pos_dict['C']
         self.first_baseman = fielder_pos_dict['1B']
@@ -421,7 +466,7 @@ class GameState:
             # increment the atbat count
             self._current_batting_lineup().find_player_by_name(self.batter).atbats += 1
 
-    def _reset_flags(self):
+    def _reset_play_flags(self):
         "call this after writing out an event"
         # this only gets send once per game
         if self.new_game_flag:
@@ -464,6 +509,9 @@ class GameState:
         self._advancing_event_text = ''
         self.event_number += 1
 
+        self.number_of_runs_on_play = 0
+        self.id_of_player_fielding_batted_ball = None
+        
     def _apply_pending_base_runner_positions(self):
         """
         move all pending runner positions to their new locations
@@ -473,8 +521,14 @@ class GameState:
         at the beginning of a given event
         """
 
-        self.runner_on_first, self.runner_on_second, self.runner_on_third = self._bases.runner_names()
-
+        self.runner_on_first, \
+        self.runner_on_second, \
+        self.runner_on_third = self._bases.runner_names()
+        self.fate_of_runner_on_first, \
+        self.fate_of_runner_on_second, \
+        self.fate_of_runner_on_third = self._bases.runners_fate_ids()
+        self.base_state_at_start_of_play = self._bases.code()
+        
         if self.runner_on_first is not None:
             self.pitcher_charged_with_runner_on_first = self._pending_pitcher_charged_with_runner_on_first
         else:
@@ -575,7 +629,7 @@ class GameState:
                     replacing_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
                     logger.warning("Used roster for auto-substitution of %s for %s" % (batter_player.name, replacing_player.name))
                     self.offensive_sub(batter_player.name, replacing_player.name)                    
-                    batter_player.set_replacing_field_position(replacing_player.position)
+                    
                 except KeyError:
                     # there is nobody to replace at this order spot
                     logger.warning("No one found to replace at order location {}".format(self._current_place_in_order))
@@ -606,13 +660,20 @@ class GameState:
                 raise
         self.batter = batter_player.name
         self.batter_hand = batter_player.bat_hand
+        if self.batter_hand == constants.SWITCH:
+            self.batter_hand = {constants.RIGHT:constants.LEFT,
+                                constants.LEFT:constants.RIGHT,
+                                constants.UNKNOWN: constants.UNKNOWN
+                                }[self.pitcher_hand]
+                
+        self.fate_of_batter = 0
         
         self.defensive_position = batter_player.position
         self.lineup_position = batter_player.order
         
         if self.event_type != 0: # something happened with the last batter
             self.result_batter = batter_player.name
-            self.result_batter_hand = batter_player.bat_hand
+            self.result_batter_hand = self.batter_hand
             self.event_type = 0 # then reset it
                 
             self.result_pitcher = self.pitcher
@@ -630,12 +691,17 @@ class GameState:
         self.new_half()
 
     def new_half(self):
+        self._update_player_fates_for_half()
         self.outs = 0
         self.runner_on_first = None
         self.runner_on_second = None
         self.runner_on_third = None
-
+        self.fate_of_batter = 0
+        self.fate_of_runner_on_first = 0
+        self.fate_of_runner_on_second = 0
+        self.fate_of_runner_on_third = 0
         self._bases.clear()
+        self.base_state_at_start_of_play = self._bases.code()
 
         self._pending_pitcher_charged_with_runner_on_first = None
         self._pending_pitcher_charged_with_runner_on_second = None
@@ -779,15 +845,16 @@ class GameState:
             raise ValueError("Error trying to credit fielder {} with assist number {}".format(position_num, assist_num))
 
     def _credit_fielders_with_out(self, player_name, fielders):
-        # catch case of fields coming in as a string of digits, for example ['543']
-        if len(fielders) == 1:
-            if len(str(fielders)) > 1:
-                fielders = list(str(fielders[0]))
+        # catch case of fielders coming in as a string of digits, for example ['543']
+        if len(fielders) == 1 and len(str(fielders)) > 1:
+            fielders = list(str(fielders[0]))
         logger.info("Fielders {}".format(fielders))
         fielders = [self.lookup_position_num(pos) for pos in fielders]
         self.fielded_by = fielders[0]
+        fielder = self._current_fielding_lineup().find_player_by_position(self.lookup_position(self.fielded_by))
         play_string = ''.join([str(p) for p in fielders[-2:]])
         if self.batter == player_name:
+            self.id_of_player_fielding_batted_ball = fielder.name
             self.play_on_batter = play_string
         elif self.runner_on_first == player_name:
             self.play_on_runner_on_first = play_string
@@ -1165,7 +1232,6 @@ class GameState:
             #TODO: add special case of earned by pitcher unearned by batting team = 6
         else:
             destination_base_name = base_num
-
         if self.batter == player_name:
             self.batter_destination = destination_base_name
         elif self.runner_on_first == player_name:
@@ -1175,14 +1241,18 @@ class GameState:
         elif self.runner_on_third == player_name:
             self.runner_on_third_destination = destination_base_name
 
-        #TODO: confirm we want to use the result_pitcher here with the pitcher charged
-        advance_string = self._bases.advance(player_name, base_num)
+        advance_string = self._bases.advance(player_name, destination_base_name)
+        
+        if self.batter == player_name:
+            self.fate_of_batter = self._bases.player_fate_id(self.batter)
+
         if advance_string.startswith("B"):
             if self.batter != player_name:
                 logger.warning("Player {} neither batter {} nor found on bases for advance to {}".format(player_name, self.batter, base))
                 raise StandardError("Lost Player")
         self._advancing_event_text += '.' + advance_string
 
+        #TODO: confirm we want to use the result_pitcher here with the pitcher charged
         if base_num == 1:
             self._pending_pitcher_charged_with_runner_on_first = self.result_pitcher
         elif base_num == 2:
@@ -1196,6 +1266,7 @@ class GameState:
             self._increment_batting_order()
 
     def _score(self, earned):
+        self.number_of_runs_on_play += 1
         self.runs_scored_in_this_half_inning += 1
         if earned:
             self.rbi_on_play += 1  #TODO: do rbi's count on unearned?
@@ -1353,6 +1424,8 @@ class GameState:
         new_player.order = removed_player.order
         if new_player.order is None:
             new_player.set_pending_sub()
+            
+        new_player.set_replacing_field_position(removed_player.position)
 
         if pinch_runner:
             base_num = constants.BASE_LOOKUP[base]

@@ -168,6 +168,8 @@ BOTTOM = 1
 
 RIGHT = 'R'
 LEFT = 'L'
+SWITCH = 'S'
+UNKNOWN = '?'
 
 
 class EVENT_CODE:

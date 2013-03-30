@@ -38,7 +38,6 @@ def import_game(gameid, cache_path=None, game=None):
     #TODO: the game wrapper for point streak should be instanced here...
     # it might make sense to just instance a new parser for each game.
     names_in_game = [p.name.replace("_apos;",'\'').replace("&apos;",'\'') for p in away_roster + home_roster]
-    print names_in_game
     parser = psp.PointStreakParser(game, names_in_game)
     
     #=======================================================================

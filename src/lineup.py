@@ -1,4 +1,4 @@
-from constants import POSITIONS, DH, P, POSITION_LOOKUP
+from constants import POSITIONS, DH, P, POSITION_LOOKUP, LEFT, RIGHT, UNKNOWN, SWITCH
 import difflib
 
 class LineupError(Exception):
@@ -13,7 +13,7 @@ class Name(str):
         return not self.__eq__(other)
     
 class Player:
-    def __init__(self, name, number=None, order=None, position=None, bat_hand=None, throw_hand=None, iddict={}):
+    def __init__(self, name, number=None, order=None, position=None, bat_hand='?', throw_hand='?', iddict={}):
         """
         setup Player object
         
@@ -39,7 +39,23 @@ class Player:
         except TypeError:
             self.order = None
         self.position = self._verified_position(position)
+        
+        if bat_hand == None:
+            bat_hand = UNKNOWN
+        if bat_hand not in [LEFT,
+                            RIGHT,
+                            SWITCH,
+                            UNKNOWN]:
+            raise StandardError("Unknown Bat hand type: {}".format(bat_hand))
         self.bat_hand = bat_hand
+
+        if throw_hand == None:
+            throw_hand = UNKNOWN
+        if throw_hand not in [LEFT,
+                              RIGHT,
+                              UNKNOWN]:
+            raise StandardError("Unknown throw hand type: {}".format(bat_hand))
+                
         self.throw_hand = throw_hand
         
         self.iddict = iddict
@@ -121,7 +137,7 @@ class Player:
         if winner_count == 1:
             return player_list[other_names.index(matches[0])]
         else:
-            raise ValueError("No single good match.  Tie between {} for player {}".format(matches, self.name))
+            raise ValueError("No single good match found in set of closest: {} for player {}".format(matches, self.name))
 
     def set_pending_sub(self, set_to=True):
         self._needs_to_sub = set_to
@@ -213,6 +229,12 @@ class PlayerList(list):
                 return p
         raise KeyError("No player found with number %s" % number)
 
+    def find_player_by_position(self, position):
+        for p in self:
+            if p.position == position:
+                return p
+        raise KeyError("No player found with position %s" % position)
+    
     def set_player_position(self, name, position):
         self.find_player_by_name(name).set_position(position)
 
