@@ -34,7 +34,7 @@ session = manager.init_database(use_mysql=False)
 
 def process_one(gameid):
     print gameid
-    game = manager.import_game(gameid)
+    game = manager.import_game(gameid, session=session)
     for event in game.events():
         session.add(event)
     session.commit()

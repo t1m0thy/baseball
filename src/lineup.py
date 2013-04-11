@@ -1,5 +1,6 @@
 from constants import POSITIONS, DH, P, POSITION_LOOKUP, LEFT, RIGHT, UNKNOWN, SWITCH
 import difflib
+from models import playerinfo
 
 class LineupError(Exception):
     pass
@@ -11,6 +12,13 @@ class Name(str):
     
     def __ne__(self, other):
         return not self.__eq__(other)
+    
+    def first(self):
+        return self.split(' ', 1)[0]
+
+    def last(self):
+        return self.split(' ', 1)[1]
+
     
 class Player:
     def __init__(self, name, number=None, order=None, position=None, bat_hand='?', throw_hand='?', iddict={}):
@@ -30,6 +38,8 @@ class Player:
                 name = first.strip() + ' ' + last.strip()
         except AttributeError:
             pass
+        
+        name = name.replace("&apos;","'").replace("_apos;","'")
         self.name = name
         if name is not None:
             self.name = Name(self.name)
@@ -60,9 +70,30 @@ class Player:
         
         self.iddict = iddict
         self.atbats = 0
+        
         #TODO: add throwing hand vs. batting hand
         #TODO: add switch_hitter flag
 
+    def set_name(self, name):
+        self.name = Name(name)
+
+    def to_model(self):
+        out = playerinfo.PlayerInfo()
+        out.FIRST_NAME = self.name.first()
+        out.LAST_NAME = self.name.last()
+        out.BAT_HAND = self.bat_hand
+        out.THROW_HAND = self.throw_hand
+        out.BIRTHDAY = self.birthday
+        out.COLLEGE_NAME = self.college_name
+        out.COLLEGE_YEAR = self.college_year
+        out.DRAFT_STATUS = self.draft_status
+        out.HEIGHT = self.height
+        out.HOMETOWN = self.hometown
+        out.POINTSTREAK_ID = self.iddict["pointstreak"]
+        out.POSITIONS = self.positions
+        out.WEIGHT = self.weight
+        return out
+    
     def _verified_position(self, position):
         if position is not None:
             return POSITION_LOOKUP[position.lower()]

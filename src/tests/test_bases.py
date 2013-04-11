@@ -73,7 +73,7 @@ class TestCase(unittest.TestCase):
         self.bases.advance("Bert", 3)
         self.assertEquals(self.bases.code(), 4)        
         self.bases.advance("Ernie", 1)
-        self.assertEquals(self.bases.code(), 5)        
+        self.assertEquals(self.bases.code(), 5)
         self.bases.advance("Ernie", 2)
         self.assertEquals(self.bases.code(), 6)        
         self.bases.advance("Oscar", 1)

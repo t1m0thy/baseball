@@ -130,24 +130,6 @@ class PointStreakScraper(GameScraper):
         self._complete_player_profile(True, home_roster)
         return away_roster, home_roster
 
-    def _make_players(self, is_home, player_dict_list):
-        out = PlayerList()
-        for player_dict in player_dict_list:
-            try:
-                new_player = Player(player_dict.get("Name"),
-                                      player_dict.get("Number"),
-                                      player_dict.get("Order"),
-                                      player_dict.get("Position"),
-                                      player_dict.get("Hand"),
-                                      iddict={"pointstreak": None})
-                if new_player.name is not None:
-                    new_player.name = new_player.name.replace("&apos;","'").replace("_apos;","'")
-                    out.add_player(new_player)
-            except (AttributeError, KeyError):
-                logger.error("making Player from dict = %s" % player_dict)
-                raise
-        return out
-    
     def scrape_lineup_from_seq_xml(self, seq):
         """
         helper method for starting_lineupa method.  
@@ -290,6 +272,22 @@ class PointStreakScraper(GameScraper):
             return new_player
         else:
             return None
+    def _make_players(self, is_home, player_dict_list):
+        out = PlayerList()
+        for player_dict in player_dict_list:
+            try:
+                new_player = Player(player_dict.get("Name"),
+                                      player_dict.get("Number"),
+                                      player_dict.get("Order"),
+                                      player_dict.get("Position"),
+                                      player_dict.get("Hand"),
+                                      iddict={"pointstreak": None})
+                if new_player.name is not None:
+                    out.add_player(new_player)
+            except (AttributeError, KeyError):
+                logger.error("making Player from dict = %s" % player_dict)
+                raise
+        return out
 
     def _div_id_dict(self, element):
         return dict((d.attrs["id"], d) for d in element.findAll("div") if d.has_attr("id"))
@@ -360,12 +358,23 @@ class PointStreakScraper(GameScraper):
                 #TODO: I don't don't if 'P' in POSITIONS is safe or correct - TDH 2-2013
                 player.throw_hand = player_info.THROW_HAND
                 player.bat_hand = player_info.BAT_HAND
+                               
             except:
                 player.bat_hand = '?'
                 player.throw_hand = '?'
-                logger.exception("Unable to find more info on {}".format(player.name))
+                logger.exception("Unable to find handedness info on {}".format(player.name))
+            try:
+                player.birthday = player_info.BIRTHDAY 
+                player.college_name = player_info.COLLEGE_NAME
+                player.college_year = player_info.COLLEGE_YEAR
+                player.draft_status = player_info.DRAFT_STATUS
+                player.height = player_info.HEIGHT
+                player.hometown = player_info.HOMETOWN
+                player.positions = player_info.POSITIONS
+                player.weight = player_info.WEIGHT 
+            except:
+                logger.exception("Unable to find extra info on {}".format(player.name))
                 
-
 class PSPHalfInningXML(HalfInning):
     def __init__(self, etree):
         self._etree = etree

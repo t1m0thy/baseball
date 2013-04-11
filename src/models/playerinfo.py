@@ -8,15 +8,18 @@ class PlayerInfo(Base):
     __tablename__ = 'players'
 
     ID = Column(Integer, primary_key=True)
-    BAT_HAND = Column(String)
-    THROW_HAND = Column(String)
-    BIRTHDAY = Column(String)
-    COLLEGE_YEAR = Column(String)
-    COLLEGE_NAME = Column(String)
-    DRAFT_STATUS = Column(String)
-    HEIGHT = Column(String)
-    HOMETOWN = Column(String)
-    POSITIONS = Column(String)
-    WEIGHT = Column(String)
+    FIRST_NAME = Column(String(255))
+    LAST_NAME = Column(String(255))
+    BAT_HAND = Column(String(1))
+    THROW_HAND = Column(String(1))
+    BIRTHDAY = Column(String(12))
+    COLLEGE_YEAR = Column(String(4))
+    COLLEGE_NAME = Column(String(255))
+    DRAFT_STATUS = Column(String(255))
+    HEIGHT = Column(String(6))
+    HOMETOWN = Column(String(255))
+    POSITIONS = Column(String(12))
+    WEIGHT = Column(String(12))
+    ID_POINTSTREAK = Column(Integer)
     #PREVIOUS_COLLEGE
     #HIGH_SCHOOL

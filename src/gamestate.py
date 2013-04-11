@@ -242,6 +242,125 @@ class GameState:
         # the whole reason this class exists is to fill this list!
         self.event_list = []
 
+    
+    #------------------------------------------------------------------------------
+    # GAME INFO
+    #------------------------------------------------------------------------------
+
+    def set_date(self, date):
+        self.date = date
+        
+    def set_game_info_dict(self, gi_dict):
+        self.game_info = gi_dict
+        print self.game_info
+        #Date: 'Tuesday, August 07 2012'
+        #Time: '7:03 PM'
+        
+    def game_info_model(self):
+        gi = gameinfo.GameInfo()
+        
+        #gi.GAME_ID = self.game_id
+        gi.GAME_DT = int(self.date.strftime("%y%m%d"))
+
+        gi.GAME_DY = ["Sunday","Monday","Tuesday",
+                        "Wednesday","Thursday",
+                        "Friday","Saturday"
+                        ][int[self.date.strftime("%w")]]
+        gi.START_GAME_TM = int(self.date.strftime("%I%M"))
+        
+        try:
+            self.home_lineup.find_player_by_position("DH")
+            gi.DH_FL = True
+        except KeyError:
+            gi.DH_FL = False
+        if int(self.date.strftime("%I")) > 5:
+            gi.DAYNIGHT_PARK_CD = 'N'
+        else:
+            gi.DAYNIGHT_PARK_CD = 'D'
+            
+        
+        gi.AWAY_TEAM_ID = self.visitting_team
+        gi.HOME_TEAM_ID = self.home_team
+        gi.PARK_ID  = self.game_info
+        gi.AWAY_START_PIT_ID = Column(String(NAME_LENGTH))
+        HOME_START_PIT_ID = Column(String(NAME_LENGTH))
+        BASE4_UMP_ID = Column(String(NAME_LENGTH))
+        BASE1_UMP_ID = Column(String(NAME_LENGTH))
+        BASE2_UMP_ID = Column(String(NAME_LENGTH))
+        BASE3_UMP_ID = Column(String(NAME_LENGTH))
+        LF_UMP_ID = Column(String(NAME_LENGTH))
+        RF_UMP_ID = Column(String(NAME_LENGTH))
+        ATTEND_PARK_CT = Column(Integer)
+        SCORER_RECORD_ID = Column(String(NAME_LENGTH))
+        TRANSLATOR_RECORD_ID = Column(String(NAME_LENGTH))
+        INPUTTER_RECORD_ID = Column(String(NAME_LENGTH))
+        INPUT_RECORD_TS = Column(String(NAME_LENGTH))
+        EDIT_RECORD_TS = Column(String(NAME_LENGTH))
+        METHOD_RECORD_CD = Column(String(NAME_LENGTH))
+        PITCHES_RECORD_CD = Column(String(1))
+        TEMP_PARK_CT = Column(Integer)
+        WIND_DIRECTION_PARK_CD = Column(Integer)
+        WIND_SPEED_PARK_CT = Column(Integer)
+        FIELD_PARK_CD = Column(Integer)
+        PRECIP_PARK_CD = Column(Integer)
+        SKY_PARK_CD = Column(Integer)
+        MINUTES_GAME_CT = Column(Integer)
+        INN_CT = Column(Integer)
+        AWAY_SCORE_CT = Column(Integer)
+        HOME_SCORE_CT = Column(Integer)
+        AWAY_HITS_CT = Column(Integer)
+        HOME_HITS_CT = Column(Integer)
+        AWAY_ERR_CT = Column(Integer)
+        HOME_ERR_CT = Column(Integer)
+        AWAY_LOB_CT = Column(Integer)
+        HOME_LOB_CT = Column(Integer)
+        WIN_PIT_ID = Column(String(NAME_LENGTH))
+        LOSE_PIT_ID = Column(String(NAME_LENGTH))
+        SAVE_PIT_ID = Column(String(NAME_LENGTH))
+        GWRBI_BAT_ID = Column(String(NAME_LENGTH))
+        AWAY_LINEUP1_BAT_ID = Column(String(NAME_LENGTH))
+        AWAY_LINEUP1_FLD_CD = Column(Integer)
+        AWAY_LINEUP2_BAT_ID = Column(String(NAME_LENGTH))
+        AWAY_LINEUP2_FLD_CD = Column(Integer)
+        AWAY_LINEUP3_BAT_ID = Column(String(NAME_LENGTH))
+        AWAY_LINEUP3_FLD_CD = Column(Integer)
+        AWAY_LINEUP4_BAT_ID = Column(String(NAME_LENGTH))
+        AWAY_LINEUP4_FLD_CD = Column(Integer)
+        AWAY_LINEUP5_BAT_ID = Column(String(NAME_LENGTH))
+        AWAY_LINEUP5_FLD_CD = Column(Integer)
+        AWAY_LINEUP6_BAT_ID = Column(String(NAME_LENGTH))
+        AWAY_LINEUP6_FLD_CD = Column(Integer)
+        AWAY_LINEUP7_BAT_ID = Column(String(NAME_LENGTH))
+        AWAY_LINEUP7_FLD_CD = Column(Integer)
+        AWAY_LINEUP8_BAT_ID = Column(String(NAME_LENGTH))
+        AWAY_LINEUP8_FLD_CD = Column(Integer)
+        AWAY_LINEUP9_BAT_ID = Column(String(NAME_LENGTH))
+        AWAY_LINEUP9_FLD_CD = Column(Integer)
+        HOME_LINEUP1_BAT_ID = Column(String(NAME_LENGTH))
+        HOME_LINEUP1_FLD_CD = Column(Integer)
+        HOME_LINEUP2_BAT_ID = Column(String(NAME_LENGTH))
+        HOME_LINEUP2_FLD_CD = Column(Integer)
+        HOME_LINEUP3_BAT_ID = Column(String(NAME_LENGTH))
+        HOME_LINEUP3_FLD_CD = Column(Integer)
+        HOME_LINEUP4_BAT_ID = Column(String(NAME_LENGTH))
+        HOME_LINEUP4_FLD_CD = Column(Integer)
+        HOME_LINEUP5_BAT_ID = Column(String(NAME_LENGTH))
+        HOME_LINEUP5_FLD_CD = Column(Integer)
+        HOME_LINEUP6_BAT_ID = Column(String(NAME_LENGTH))
+        HOME_LINEUP6_FLD_CD = Column(Integer)
+        HOME_LINEUP7_BAT_ID = Column(String(NAME_LENGTH))
+        HOME_LINEUP7_FLD_CD = Column(Integer)
+        HOME_LINEUP8_BAT_ID = Column(String(NAME_LENGTH))
+        HOME_LINEUP8_FLD_CD = Column(Integer)
+        HOME_LINEUP9_BAT_ID = Column(String(NAME_LENGTH))
+        HOME_LINEUP9_FLD_CD = Column(Integer)
+        AWAY_FINISH_PIT_ID = Column(String(NAME_LENGTH))
+        HOME_FINISH_PIT_ID = Column(String(NAME_LENGTH))
+            
+
+
+        return gi
+    
     #------------------------------------------------------------------------------
     # GAME SETUP
     #------------------------------------------------------------------------------
@@ -292,7 +411,7 @@ class GameState:
     def get_event_value(self, e, attribute_name):
         """ 
         for a given gamestate attribute name, lookup the corresponding 
-        value in an event mode using the MODEL_LOOKUP_DICT 
+        value in an event model using the MODEL_LOOKUP_DICT 
         which is derived from eventfields.py 
         """
         return getattr(e, MODEL_LOOKUP_DICT[attribute_name])
@@ -300,7 +419,7 @@ class GameState:
     def set_event_value(self, e, attribute_name, value):
         """ 
         for a given gamestate attribute name, set the corresponding 
-        value in an event mode using the MODEL_LOOKUP_DICT 
+        value in an event model using the MODEL_LOOKUP_DICT 
         which is derived from eventfields.py 
         """
         setattr(e, MODEL_LOOKUP_DICT[attribute_name], value)
@@ -347,7 +466,7 @@ class GameState:
         # in case last event was a runner event, it is still pending, so send it
         self._update_player_fates_for_half()
         self._record_any_pending_runner_event()
-        self._last_event.GAME_END_FL = True
+        self.set_event_value(self._last_event, "end_game_flag", 'T')
 
     def _update_player_fates_for_half(self):
         for e in reversed(self.event_list):
