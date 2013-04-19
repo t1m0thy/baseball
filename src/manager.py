@@ -34,7 +34,7 @@ def import_game(gameid, cache_path=None, game=None, session=None):
     #=======================================================================
     away_starting_lineup, home_starting_lineup = scraper.starting_lineups()
     away_roster, home_roster = scraper.game_rosters()
-    
+
     # sync up with the player database.
     if session:
         for player in away_roster:
@@ -58,7 +58,7 @@ def import_game(gameid, cache_path=None, game=None, session=None):
     # it might make sense to just instance a new parser for each game.
     names_in_game = [p.name.replace("_apos;",'\'').replace("&apos;",'\'') for p in away_roster + home_roster]
     parser = psp.PointStreakParser(game, names_in_game)
-    
+
     #=======================================================================
     # Parse plays
     #=======================================================================
@@ -74,8 +74,8 @@ def import_game(gameid, cache_path=None, game=None, session=None):
             except pp.ParseException, pe:
                 try:
                     logger.critical("{}: {}\n{}".format(raw_event.title(),
-                                                      game.inning_string(),
-                                                          pe.markInputline()))
+                                                        game.inning_string(),
+                                                        pe.markInputline()))
                 except:
                     logger.error("possible source: {}".format(raw_event.text()))
                 raise
@@ -88,22 +88,23 @@ def import_game(gameid, cache_path=None, game=None, session=None):
     game.set_previous_event_as_game_end()
     return game
 
+
 def init_database(use_mysql=False, dbname="smallball"):
-    """ 
-    initialize database 
+    """
+    initialize database
     if use_mysql is true, use environment variables to set it up
     otherwise default to sqlite
     """
     #engine = create_engine('sqlite:///:memory:', echo=False)
     # "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}"
     if use_mysql:
-        mysql_setup = "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}".format(
-                         user=os.environ.get('DOTCLOUD_DATA_MYSQL_LOGIN'),
-                         password=os.environ.get('DOTCLOUD_DATA_MYSQL_PASSWORD'),
-                         host=os.environ.get("DOTCLOUD_DATA_MYSQL_HOST"),
-                         port=os.environ.get("DOTCLOUD_DATA_MYSQL_PORT"),
-                         dbname=dbname
+        db_setup = dict(user="grabber",  # os.environ.get('DOTCLOUD_DATA_MYSQL_LOGIN')
+                        password="stitches",  # os.environ.get('DOTCLOUD_DATA_MYSQL_PASSWORD')
+                        host=os.environ.get("DOTCLOUD_DATA_MYSQL_HOST"),
+                        port=os.environ.get("DOTCLOUD_DATA_MYSQL_PORT"),
+                        dbname=dbname
                         )
+        mysql_setup = "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}".format(db_setup)
         engine = create_engine(mysql_setup, echo=False)
     else:
         engine = create_engine('sqlite:///data.sqlite', echo=False)
