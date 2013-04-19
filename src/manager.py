@@ -4,17 +4,18 @@ logger = logging.getLogger("manager")
 
 import pyparsing as pp
 import gamestate
+import gameinfo
+
 import pointstreakparser as psp
 import pointstreakscraper as pss
 from models.playerinfo import PlayerInfo
-#from models.gameinfo import GameInfo
 
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import event
-from models import gameinfo
 from models import playerinfo
+from models import gameinfomodel
 
 
 def import_game(gameid, cache_path=None, game=None, session=None):
@@ -24,7 +25,9 @@ def import_game(gameid, cache_path=None, game=None, session=None):
 
     if game is None:
         game = gamestate.GameState()
-    game.set_game_info_dict(scraper.game_info)
+    game_info = gameinfo.GameInfo(gameid)
+    game_info.set_game_info(scraper.game_info)
+
     game.home_team_id = scraper.home_team()
     game.visiting_team = scraper.away_team()
     game.game_id = gameid
@@ -33,6 +36,8 @@ def import_game(gameid, cache_path=None, game=None, session=None):
     # Parse starting lineups and game rosters (any player to appear at all)
     #=======================================================================
     away_starting_lineup, home_starting_lineup = scraper.starting_lineups()
+    game_info.set_starting_players(away_starting_lineup, home_starting_lineup)
+
     away_roster, home_roster = scraper.game_rosters()
 
     # sync up with the player database.
@@ -43,11 +48,13 @@ def import_game(gameid, cache_path=None, game=None, session=None):
                 session.add(player.to_model())
             elif player_models.count() > 1:
                 logger.warning("More than one player found for name: {} {}".format(player.name.first(), player.name.last()))
-        #game_info_query = session.query(GameInfo).filter_by(GAME_ID=game.game_id)
-        #if game_info_query.count() < 1:
-        #    session.add(game.game_info_model())
-        #elif game_info_query.count() > 1:
-        #    logger.warning("More than one game found with id: {}".format(game.game_id))
+        game_info_query = session.query(gameinfomodel.GameInfoModel).filter_by(GAME_ID=game.game_id)
+        if game_info_query.count() < 1:
+            session.add(game_info.as_model())
+            logger.info("added game info to db")
+        elif game_info_query.count() > 1:
+            logger.warning("More than one game found with id: {}".format(game.game_id))
+
     game.set_away_lineup(away_starting_lineup)
     game.set_home_lineup(home_starting_lineup)
     game.set_away_roster(away_roster)
@@ -56,7 +63,7 @@ def import_game(gameid, cache_path=None, game=None, session=None):
     # pass game to parser
     #TODO: the game wrapper for point streak should be instanced here...
     # it might make sense to just instance a new parser for each game.
-    names_in_game = [p.name.replace("_apos;",'\'').replace("&apos;",'\'') for p in away_roster + home_roster]
+    names_in_game = [p.name.replace("_apos;", '\'').replace("&apos;", '\'') for p in away_roster + home_roster]
     parser = psp.PointStreakParser(game, names_in_game)
 
     #=======================================================================
@@ -98,18 +105,19 @@ def init_database(use_mysql=False, dbname="smallball"):
     #engine = create_engine('sqlite:///:memory:', echo=False)
     # "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}"
     if use_mysql:
-        db_setup = dict(user="grabber",  # os.environ.get('DOTCLOUD_DATA_MYSQL_LOGIN')
+        db_setup = dict(user="smallball",  # os.environ.get('DOTCLOUD_DATA_MYSQL_LOGIN')
                         password="stitches",  # os.environ.get('DOTCLOUD_DATA_MYSQL_PASSWORD')
-                        host=os.environ.get("DOTCLOUD_DATA_MYSQL_HOST"),
-                        port=os.environ.get("DOTCLOUD_DATA_MYSQL_PORT"),
-                        dbname=dbname
+                        host="mysql.growdown.com",
+                        port=3306,
+                        dbname="smallball"
                         )
-        mysql_setup = "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}".format(db_setup)
+        print db_setup
+        mysql_setup = "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}".format(**db_setup)
         engine = create_engine(mysql_setup, echo=False)
     else:
         engine = create_engine('sqlite:///data.sqlite', echo=False)
     event.Base.metadata.create_all(engine)
-    gameinfo.Base.metadata.create_all(engine)
+    gameinfomodel.Base.metadata.create_all(engine)
     playerinfo.Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()

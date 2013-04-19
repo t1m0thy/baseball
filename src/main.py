@@ -11,7 +11,7 @@ import pointstreakscraper as pss
 #===============================================================================
 import argparse
 parser = argparse.ArgumentParser("The Small Ball Stats Muncher")
-loghelp = """log level: one of 'all', 'debug', 'info', 'warn', 'error', 'critical'.  
+loghelp = """log level: one of 'all', 'debug', 'info', 'warn', 'error', 'critical'.
                 Default is 'warn'"""
 parser.add_argument('-l', '--log', action="store", default="warn", help=loghelp)
 parser.add_argument('-g', '--game', action="store", default=None, help="run one specific game number")
@@ -28,9 +28,10 @@ logger = logging.getLogger("main")
 # instance parser, setup databse
 #===========================================================================
 games = {}
-session = manager.init_database(use_mysql=False)
+session = manager.init_database(use_mysql=True)
 
 # track parsing success game ids
+
 
 def process_one(gameid):
     print gameid
@@ -41,7 +42,7 @@ def process_one(gameid):
     games[game.game_id] = game
 
 if options.game is None:
-    jm = JobManager("pending.yml")    
+    jm = JobManager("pending.yml")
     for gameid in jm.jobs("pointstreak"):
         try:
             process_one(gameid)
@@ -57,7 +58,7 @@ else:
     except lineup.LineupError:
         print "PROBLEM WITH {}".format(pss.make_xml_seq_url(options.game, 0))
         raise
-        
+
     except:
         print "PROBLEM WITH {}".format(pss.make_html_url(options.game))
         raise
