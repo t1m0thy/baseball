@@ -26,7 +26,7 @@ def get_cached_url(url, cache_filename=None, force_reload=False):
         br.set_handle_redirect(True)
         br.set_handle_referer(True)
         br.set_handle_robots(False)
-        br.addheaders = [('User-agent', 'Mozilla/5.0 (Windows; U; Windows NT6.0; en-US; rv:1.9.0.6')]
+        br.addheaders = [('User-agent', 'Mozilla/5.0 (iPad; CPU OS 6_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5355d Safari/8536.25')]
         br.addheaders.append(('Accept-Encoding', 'gzip'))
 
         br.open(url)
