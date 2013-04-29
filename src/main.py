@@ -36,10 +36,11 @@ session = manager.init_database(use_mysql=True)
 def process_one(gameid):
     print gameid
     game = manager.import_game(gameid, session=session)
-    for event in game.events():
-        session.add(event)
-    session.commit()
-    games[game.game_id] = game
+    # for event in game.events():
+    #     session.add(event)
+    # session.commit()
+    if game is not None:
+        games[game.game_id] = game
 
 if options.game is None:
     jm = JobManager("pending.yml")

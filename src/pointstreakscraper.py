@@ -56,13 +56,13 @@ def make_xml_seq_url(gameid, seq):
 def make_html_url(gameid):
     """ the html url used for parsing game.  useful for reviewing site source """
     return PS_GAME_HTML % str(gameid)
-    
+
 #===============================================================================
 # GameID Scraping
 #===============================================================================
 
 PS_JSON_URL = "http://www.pointstreak.com/baseball/ajax/schedule_ajax.php?action=showalldates&s={}"
-    
+
 def scrape_pointstreak_gameids(html):
     playoff_soup = BeautifulSoup(html)
     links = playoff_soup.find_all("a")
@@ -83,7 +83,7 @@ class PointStreakScraper(GameScraper):
     def __init__(self, gameid, cache_path=None):
         self.gameid = str(gameid)
         if cache_path is not None:
-            self._cache_path = cache_path            
+            self._cache_path = cache_path
         else:
             self._cache_path = DEFAULT_CACHE_PATH
         self._home_html_player_list = PlayerList()
@@ -125,14 +125,14 @@ class PointStreakScraper(GameScraper):
         home_roster = PlayerList()
         away_roster.update_players(self._make_players(is_home=False, player_dict_list=away_offense + away_replaced + away_pitchers))
         home_roster.update_players(self._make_players(is_home=True, player_dict_list=home_offense + home_replaced + home_pitchers))
-        
+
         self._complete_player_profile(False, away_roster)
         self._complete_player_profile(True, home_roster)
         return away_roster, home_roster
 
     def scrape_lineup_from_seq_xml(self, seq):
         """
-        helper method for starting_lineupa method.  
+        helper method for starting_lineupa method.
         given a sequence number, grabs the xml file, and pulls out the lineups from it
         """
         xml = self._get_pointstreak_xml(seq)
@@ -158,7 +158,7 @@ class PointStreakScraper(GameScraper):
                 except KeyError:
                     away_defense_player_list.insert(0, starting_pitcher)
 
-        
+
         home_offense_player_list = self._make_players(is_home=False, player_dict_list=home_offense)
         home_defense_player_list = self._make_players(is_home=False, player_dict_list=home_defense)
 
@@ -171,11 +171,11 @@ class PointStreakScraper(GameScraper):
                 except KeyError:
                     home_defense_player_list.insert(0, starting_pitcher)
         return away_offense_player_list + away_defense_player_list, home_offense_player_list + home_defense_player_list
-            
+
     def starting_lineups(self):
         """
         scrape the starting lineup from the sequential point streak XMl files
-        
+
         loop through the xml files until a complete lineup for both teams has been established
         """
         complete = False
@@ -186,14 +186,14 @@ class PointStreakScraper(GameScraper):
         while not complete:
             try:
                 away_player_list, home_player_list = self.scrape_lineup_from_seq_xml(seq)
-        
+
                 for p in away_player_list:
                     if p.position not in away_lineup.position_dict() and p.name is not None:
                         away_lineup.update_player(p)
                 for p in home_player_list:
                     if p.position not in home_lineup.position_dict() and p.name is not None:
                         home_lineup.update_player(p)
-                
+
                 try:
                     complete = home_lineup.is_complete(raise_reason=False)
                 except LineupError, e:
@@ -303,7 +303,7 @@ class PointStreakScraper(GameScraper):
         except:
             logger.error("Failed to find match for:\n{} \nin list:\n{}".format(player, search_list))
             raise
-        
+
     def _update_html_player_table(self, is_home, table):
         """
         helper method to build player lists parsed from the html pages.
@@ -321,7 +321,7 @@ class PointStreakScraper(GameScraper):
                 player_id = t.a.attrs.get("href").split('=')[1]
                 player = Player(player_name, player_num, iddict={"pointstreak": player_id})
                 current_list.update_player(player)
-                
+
     def _build_html_player_tables(self):
         """
         parse the rosters from the main game html page
@@ -349,32 +349,37 @@ class PointStreakScraper(GameScraper):
         """ return point streak html from a player id """
         player_cache_path = os.path.join(self._cache_path, PLAYER_CACHE_PATH % ("PS" + str(player_id)))
         return get_cached_url(self._player_url_from_id(player_id), player_cache_path)
-        
+
     def _complete_player_profile(self, is_home, player_list):
         for player in player_list:
             try:
                 player_id = self.get_player_id(is_home, player)
                 player_info = self.get_player_info(player_id)
+                player.iddict["pointstreak"] = player_id
+            except:
+                logger.exception("Unable to find player with id: {}".format(player_id))
+
+            try:
                 #TODO: I don't don't if 'P' in POSITIONS is safe or correct - TDH 2-2013
                 player.throw_hand = player_info.THROW_HAND
                 player.bat_hand = player_info.BAT_HAND
-                               
             except:
                 player.bat_hand = '?'
                 player.throw_hand = '?'
                 logger.exception("Unable to find handedness info on {}".format(player.name))
+
             try:
-                player.birthday = player_info.BIRTHDAY 
+                player.birthday = player_info.BIRTHDAY
                 player.college_name = player_info.COLLEGE_NAME
                 player.college_year = player_info.COLLEGE_YEAR
                 player.draft_status = player_info.DRAFT_STATUS
                 player.height = player_info.HEIGHT
                 player.hometown = player_info.HOMETOWN
                 player.positions = player_info.POSITIONS
-                player.weight = player_info.WEIGHT 
+                player.weight = player_info.WEIGHT
             except:
                 logger.exception("Unable to find extra info on {}".format(player.name))
-                
+
 class PSPHalfInningXML(HalfInning):
     def __init__(self, etree):
         self._etree = etree
@@ -424,7 +429,7 @@ class PSPRawEventXML(RawEvent):
             return self._type
         else:
             return "{} #{} {}".format(self._type, self._batter_number, self._batter_name)
-            
+
 
 
 

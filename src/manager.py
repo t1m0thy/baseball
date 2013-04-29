@@ -18,19 +18,13 @@ from models import playerinfo
 from models import gameinfomodel
 
 
-def import_game(gameid, cache_path=None, game=None, session=None):
+def import_game(gameid, cache_path=None, game=None, session=None, players_only=False):
     gameid = str(gameid)
 
     scraper = pss.PointStreakScraper(gameid, cache_path)
 
-    if game is None:
-        game = gamestate.GameState()
     game_info = gameinfo.GameInfo(gameid)
     game_info.set_game_info(scraper.game_info)
-
-    game.home_team_id = scraper.home_team()
-    game.visiting_team = scraper.away_team()
-    game.game_id = gameid
 
     #=======================================================================
     # Parse starting lineups and game rosters (any player to appear at all)
@@ -42,33 +36,47 @@ def import_game(gameid, cache_path=None, game=None, session=None):
 
     # sync up with the player database.
     if session:
-        for player in away_roster:
+        for player in away_roster + home_roster:
             player_models = session.query(PlayerInfo).filter_by(FIRST_NAME=player.name.first(), LAST_NAME=player.name.last())
             if player_models.count() < 1:
                 session.add(player.to_model())
             elif player_models.count() > 1:
                 logger.warning("More than one player found for name: {} {}".format(player.name.first(), player.name.last()))
-        game_info_query = session.query(gameinfomodel.GameInfoModel).filter_by(GAME_ID=game.game_id)
+            elif player_models.count() == 1:
+                m = player.to_model(player_models[0])  # update existing model
+                print m.ID_POINTSTREAK
+                session.merge(m)
+        game_info_query = session.query(gameinfomodel.GameInfoModel).filter_by(GAME_ID=gameid)
         if game_info_query.count() < 1:
             session.add(game_info.as_model())
             logger.info("added game info to db")
         elif game_info_query.count() > 1:
             logger.warning("More than one game found with id: {}".format(game.game_id))
 
+    if players_only:
+        session.commit()
+        return
+
+    if game is None:
+        game = gamestate.GameState()
+    game.home_team_id = scraper.home_team()
+    game.visiting_team = scraper.away_team()
+    game.game_id = gameid
+
     game.set_away_lineup(away_starting_lineup)
     game.set_home_lineup(home_starting_lineup)
     game.set_away_roster(away_roster)
     game.set_home_roster(home_roster)
+
+    #=======================================================================
+    # Parse plays
+    #=======================================================================
 
     # pass game to parser
     #TODO: the game wrapper for point streak should be instanced here...
     # it might make sense to just instance a new parser for each game.
     names_in_game = [p.name.replace("_apos;", '\'').replace("&apos;", '\'') for p in away_roster + home_roster]
     parser = psp.PointStreakParser(game, names_in_game)
-
-    #=======================================================================
-    # Parse plays
-    #=======================================================================
 
     for half in scraper.halfs():
         game.new_half()
@@ -93,10 +101,14 @@ def import_game(gameid, cache_path=None, game=None, session=None):
                     logger.error("possible source: {}".format(raw_event.text()))
                 raise  # StandardError("Error with event: {}".format(raw_event.text()))
     game.set_previous_event_as_game_end()
+
+    for e in game.events():
+        session.add(e)
+    session.commit()
     return game
 
 
-def init_database(use_mysql=False, dbname="smallball"):
+def init_database(use_mysql=False, dbname="sbs"):
     """
     initialize database
     if use_mysql is true, use environment variables to set it up
@@ -105,13 +117,12 @@ def init_database(use_mysql=False, dbname="smallball"):
     #engine = create_engine('sqlite:///:memory:', echo=False)
     # "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}"
     if use_mysql:
-        db_setup = dict(user="smallball",  # os.environ.get('DOTCLOUD_DATA_MYSQL_LOGIN')
-                        password="stitches",  # os.environ.get('DOTCLOUD_DATA_MYSQL_PASSWORD')
-                        host="mysql.growdown.com",
-                        port=3306,
-                        dbname="smallball"
+        db_setup = dict(user="root",  # os.environ.get('DOTCLOUD_DATA_MYSQL_LOGIN')
+                        password="BupRihFav!5",  # os.environ.get('DOTCLOUD_DATA_MYSQL_PASSWORD')
+                        host="127.0.0.1",
+                        port=3307,
+                        dbname=dbname
                         )
-        print db_setup
         mysql_setup = "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}".format(**db_setup)
         engine = create_engine(mysql_setup, echo=False)
     else:
