@@ -70,6 +70,7 @@ class Player:
 
         self.iddict = iddict
         self.atbats = 0
+        self.game_stats = {}
 
         #TODO: add throwing hand vs. batting hand
         #TODO: add switch_hitter flag
@@ -92,7 +93,9 @@ class Player:
         out.DRAFT_STATUS = self.draft_status
         out.HEIGHT = self.height
         out.HOMETOWN = self.hometown
-        out.ID_POINTSTREAK = int(self.iddict.get("pointstreak", -1))
+        psid = self.iddict.get("pointstreak", -1)
+        if psid is not None:
+            out.ID_POINTSTREAK = int(psid)
         out.POSITIONS = self.positions
         out.WEIGHT = self.weight
         return out

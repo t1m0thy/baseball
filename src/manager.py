@@ -18,7 +18,7 @@ from models import playerinfo
 from models import gameinfomodel
 
 
-def import_game(gameid, cache_path=None, game=None, session=None, players_only=False):
+def import_game(gameid, cache_path=None, game=None, session=None):
     gameid = str(gameid)
 
     scraper = pss.PointStreakScraper(gameid, cache_path)
@@ -44,7 +44,6 @@ def import_game(gameid, cache_path=None, game=None, session=None, players_only=F
                 logger.warning("More than one player found for name: {} {}".format(player.name.first(), player.name.last()))
             elif player_models.count() == 1:
                 m = player.to_model(player_models[0])  # update existing model
-                print m.ID_POINTSTREAK
                 session.merge(m)
         game_info_query = session.query(gameinfomodel.GameInfoModel).filter_by(GAME_ID=gameid)
         if game_info_query.count() < 1:
@@ -52,10 +51,6 @@ def import_game(gameid, cache_path=None, game=None, session=None, players_only=F
             logger.info("added game info to db")
         elif game_info_query.count() > 1:
             logger.warning("More than one game found with id: {}".format(game.game_id))
-
-    if players_only:
-        session.commit()
-        return
 
     if game is None:
         game = gamestate.GameState()
@@ -101,6 +96,11 @@ def import_game(gameid, cache_path=None, game=None, session=None, players_only=F
                     logger.error("possible source: {}".format(raw_event.text()))
                 raise  # StandardError("Error with event: {}".format(raw_event.text()))
     game.set_previous_event_as_game_end()
+
+    for p in game.home_roster + game.away_roster:
+        print p
+        if p.atbats != p.game_stats.get("AB", 0):
+            logger.error("{} does no equal {} for player ".format(p.atbats, p.game_stats.get("AB", 0), p.name))
 
     for e in game.events():
         session.add(e)

@@ -314,12 +314,21 @@ class PointStreakScraper(GameScraper):
             current_list = self._away_html_player_list
         for t in table.find_all("tr"):
             if t.a is not None:
+                # number, name,           P      AB    R     H     RBI   BB    SO     AVG
                 #[u'2', u'Campbell, D', u'SS', u'4', u'0', u'0', u'0', u'0', u'1', u'.302']
                 table_values = [td.text for td in t.find_all("td")]
                 player_num = table_values[0]
                 player_name = table_values[1]
                 player_id = t.a.attrs.get("href").split('=')[1]
                 player = Player(player_name, player_num, iddict={"pointstreak": player_id})
+                player.game_stats = dict(AB=int(table_values[3]),
+                                         #R=int(table_values[4]),
+                                         #H=int(table_values[5]),
+                                         #RBI=int(table_values[6]),
+                                         #BB=int(table_values[7]),
+                                         #SO=int(table_values[8]),
+                                         #AVG=float(table_values[9])
+                                         )
                 current_list.update_player(player)
 
     def _build_html_player_tables(self):
@@ -352,8 +361,13 @@ class PointStreakScraper(GameScraper):
 
     def _complete_player_profile(self, is_home, player_list):
         for player in player_list:
+            player_id = None
             try:
                 player_id = self.get_player_id(is_home, player)
+            except:
+                logger.exception("unable to find id for player {}".format(player.name))
+
+            try:
                 player_info = self.get_player_info(player_id)
                 player.iddict["pointstreak"] = player_id
             except:
