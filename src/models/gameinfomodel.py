@@ -94,3 +94,6 @@ class GameInfoModel(Base):
     HOME_LINEUP9_FLD_CD = Column(Integer)
     AWAY_FINISH_PIT_ID = Column(String(NAME_LENGTH))
     HOME_FINISH_PIT_ID = Column(String(NAME_LENGTH))
+
+    # new fields
+    #WEATHER_TXT = Column(String(NAME_LENGTH))
