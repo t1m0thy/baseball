@@ -51,9 +51,9 @@ def main():
                     jm.save()
                 for gameid in jm.jobs(group, do_job_type=jobmanager.TODO):
                     try:
-                        #delete_game(session, gameid)
+                        delete_game(session, gameid)
                         print ">>>> processing {}".format(gameid)
-                        manager.import_game(gameid, PERSISTENT_FILE_PATH, session=session, players_only=False)
+                        manager.import_game(gameid, PERSISTENT_FILE_PATH, session=session)
 
                         jm.complete_job(gameid, group)
                         jm.save()

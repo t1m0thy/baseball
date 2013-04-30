@@ -15,6 +15,8 @@ loghelp = """log level: one of 'all', 'debug', 'info', 'warn', 'error', 'critica
                 Default is 'warn'"""
 parser.add_argument('-l', '--log', action="store", default="warn", help=loghelp)
 parser.add_argument('-g', '--game', action="store", default=None, help="run one specific game number")
+parser.add_argument('-a', '--apply', action="store_true", default=False, help="apply changes to mysql database")
+
 options = parser.parse_args()
 
 #===============================================================================
@@ -28,7 +30,7 @@ logger = logging.getLogger("main")
 # instance parser, setup databse
 #===========================================================================
 games = {}
-session = manager.init_database(use_mysql=True)
+session = manager.init_database(use_mysql=options.apply)
 
 # track parsing success game ids
 
