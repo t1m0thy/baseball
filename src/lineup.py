@@ -2,13 +2,34 @@ from constants import POSITIONS, DH, P, POSITION_LOOKUP, LEFT, RIGHT, UNKNOWN, S
 import difflib
 from models import playerinfo
 
+
 class LineupError(Exception):
     pass
 
+
 class Name(str):
     """ will test quality with lower case, and stripped"""
+    def __new__(self, name):
+        try:
+            name = name.strip()
+            name = name.replace("&apos;", "'").replace("_apos;", "'")
+            if ',' in name:
+                last, first = name.split(',', 1)
+                name = first.strip() + ' ' + last.strip()
+            first, last = name.split(" ", 1)
+            self.id = last.replace(" ", "")[:4].lower() + first[0].lower()
+        except AttributeError:
+            pass
+        return str.__new__(self, name)
+
     def __eq__(self, other):
-        return self.lower() == str(other).strip().lower()
+        if self.lower() == str(other).strip().lower():
+            return True
+        elif self.id == str(other):
+            return True
+        elif hasattr(other, "id") and self.id == other.id:
+            return True
+        return False
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -31,18 +52,11 @@ class Player:
         self._needs_to_sub = False
         self._pinch_hitter = False
         self._replacing_field_position = None
-        try:
-            name = name.strip()
-            if ',' in name:
-                last, first = name.split(',', 1)
-                name = first.strip() + ' ' + last.strip()
-            name = name.replace("&apos;", "'").replace("_apos;", "'")
-        except AttributeError:
-            pass
 
         self.name = name
         if name is not None:
             self.name = Name(self.name)
+
         self.number = number
         try:
             self.order = int(order)
@@ -50,7 +64,7 @@ class Player:
             self.order = None
         self.position = self._verified_position(position)
 
-        if bat_hand == None:
+        if bat_hand is None:
             bat_hand = UNKNOWN
         if bat_hand not in [LEFT,
                             RIGHT,
@@ -59,7 +73,7 @@ class Player:
             raise StandardError("Unknown Bat hand type: {}".format(bat_hand))
         self.bat_hand = bat_hand
 
-        if throw_hand == None:
+        if throw_hand is None:
             throw_hand = UNKNOWN
         if throw_hand not in [LEFT,
                               RIGHT,
@@ -98,6 +112,7 @@ class Player:
             out.ID_POINTSTREAK = int(psid)
         out.POSITIONS = self.positions
         out.WEIGHT = self.weight
+        out.SBS_ID = self.name.id
         return out
 
     def _verified_position(self, position):
@@ -123,6 +138,7 @@ class Player:
             if other.__dict__[attr] is not None:
                 self.__dict__[attr] = other.__dict__[attr]
         self.iddict.update(other.iddict)
+        self.game_stats.update(other.game_stats)
 
     def diff(self, other):
         """return dictionary of any values that differ with other player.
@@ -245,8 +261,8 @@ class PlayerList(list):
         if player.name not in my_player_names:
             self.append(player)
         else:
-            replace_index = my_player_names.index(player.name)
-            current_player = self[replace_index]
+            merge_index = my_player_names.index(player.name)
+            current_player = self[merge_index]
             current_player.merge(player)
 
     def find_player_by_name(self, name):

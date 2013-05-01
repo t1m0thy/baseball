@@ -1,7 +1,25 @@
 import lineup
-from lineup import Player, LineupError
+from lineup import Player, LineupError, Name
 from constants import LEFT, RIGHT
 import unittest
+
+
+class TestNames(unittest.TestCase):
+    def test_equality1(self):
+        a = Name("Hirzel, Tim")
+        b = Name("Tim Hirzel")
+        self.assertTrue(a == b)
+
+    def test_equality2(self):
+        a = Name("Hirzel, Tim")
+        a.id = "hirzt001"
+        b = "hirzt001"
+        self.assertTrue(a == b)
+
+    def test_equality3(self):
+        a = Name("Hirzel, Tim")
+        b = "hirzt"
+        self.assertTrue(a == b)
 
 
 class TestPlayer(unittest.TestCase):
@@ -12,7 +30,7 @@ class TestPlayer(unittest.TestCase):
         boggs2.number = None
         boggs.merge(boggs2)
         self.assertEqual(boggs.number, 26)
-        
+
     def test_name_equals(self):
         boggs = Player("Wade Boggs", 26, 1, "P", LEFT)
         self.assertEquals(boggs.name, "wade boggs ")
@@ -21,7 +39,8 @@ class TestPlayer(unittest.TestCase):
         boggs = Player("Wade Boggs JR", 26, 1, "P", LEFT)
         self.assertFalse(boggs.name != "wade boggs jr")
         self.assertTrue(boggs.name == "wade boggs jr")
-        
+
+
 class TestLineup(unittest.TestCase):
     def setUp(self):
         self.lineup = lineup.Lineup()
@@ -55,12 +74,12 @@ class TestLineup(unittest.TestCase):
         self.lineup.add_player(Player("Wade Boggs", 26, 1, "P", LEFT))
         self.lineup.update_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
         self.assertEqual(self.lineup.find_player_by_position("3B").name, "Wade Boggs")
-    
+
     def test_update_error(self):
         self.lineup.add_player(Player("Wade Boggs", 26, 1, "P", LEFT))
         self.lineup.update_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
         self.assertRaises(StandardError, self.lineup.update_player, Player(None, 26, 1, "3B", LEFT))
-        
+
     def test_find_by_position(self):
         self.lineup.add_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
         self.assertEquals("Wade Boggs", self.lineup.find_player_by_position("3B").name)
@@ -104,17 +123,17 @@ class TestCaseComplete(unittest.TestCase):
 
     def test_print(self):
         print self.lineup
-        
+
     def test_closest_match(self):
         test = Player("Wade Boggs", None, 1, None, LEFT)
         result = test.find_closest_name(self.lineup)
         self.assertEqual(result, self.lineup.find_player_by_number(26))
-        
+
     def test_closest_match2(self):
         test = Player("Boggs, W", None, None, None, None)
         result = test.find_closest_name(self.lineup)
         self.assertEqual(result, self.lineup.find_player_by_number(26))
-        
+
 #    def test_closest_match3(self):
 #        test = Player(None, 26, None, None, None)
 #        result = test.find_closest_name(self.lineup)
@@ -132,4 +151,3 @@ class TestCaseComplete(unittest.TestCase):
 #        test = Player(None, None, None, "3B", None)
 #        result = test.find_closest_name(self.lineup)
 #        self.assertEqual(result, self.lineup.find_player_by_number(26))
-        
