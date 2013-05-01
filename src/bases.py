@@ -11,6 +11,18 @@ class Bases:
     def __init__(self):
         self.clear()
 
+    def force_runners(self):
+        """
+        resolved any runners by assuming they were forced forward
+        """
+        moved = []
+        while self.unresolved_players:
+            for runner in self.unresolved_players:
+                newbase = self.player_locations[runner] + 1
+                self.advance(runner, newbase)
+                moved.append((runner, newbase))
+        return moved
+
     def runner_names(self):
         """return tuple of names of players on (first, second, third)"""
         return (self.on_base(1),
@@ -35,12 +47,21 @@ class Bases:
     def runner_count(self):
         return len(self.player_locations)
 
+    def mark_unresolved(self, player_name):
+        self.unresolved_players.append(player_name)
+
+    def resolve(self, player_name):
+        if player_name in self.unresolved_players:
+            self.unresolved_players.remove(player_name)
+
     def remove(self, player_name):
+        self.resolve(player_name)
         del(self.player_locations[player_name])
         del(self.fates_id_lookup[player_name])
 
     def clear(self):
         self.player_locations = {}
+        self.unresolved_players = []
         self.fates_dict = {}
         self.fates_id_lookup = {None: 0}
         #self.fates_bases = [0,0,0,0]
@@ -55,6 +76,7 @@ class Bases:
             base_num = base
 
         if player_name in self.player_locations:
+            self.resolve(player_name)
             assert (base_num > self.player_locations[player_name])
             startbase = self.player_locations[player_name]
             if base_num == 4:
@@ -69,6 +91,8 @@ class Bases:
         if base_num == 4:
             endbase = 'H'
         else:
+            if self.on_base(base_num) is not None:
+                self.mark_unresolved(self.on_base(base_num))
             self.player_locations[player_name] = base_num
             endbase = str(base_num)
 
@@ -83,6 +107,9 @@ class Bases:
         if self.on_base(base) != replacing_player:
             raise StandardError("{} is not on base {} for {} to replace".format(replacing_player, base, new_player))
         replacing_runner_fate_id = self.player_fate_id(replacing_player)
+        if replacing_player in self.unresolved_players:
+            self.resolve(replacing_player)
+            self.mark_unresolved(new_player)
         self.remove(replacing_player)
         self.fates_id_lookup[new_player] = replacing_runner_fate_id
         self.player_locations[new_player] = base
