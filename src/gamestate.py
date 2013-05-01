@@ -556,9 +556,9 @@ class GameState:
         this is because the runner_on_* attributes indicate the positions of runners
         at the beginning of a given event
         """
-        moved = self._bases.force_runners()
-        for runner, base in moved:
-            logger.warning("{} was forced to {} base to resolve base position that was not explicitly given".format(runner, base))
+        #moved = self._bases.force_runners()
+        #for runner, base in moved:
+        #    logger.warning("{} was forced to {} base to resolve base position that was not explicitly given".format(runner, base))
         a, b, c = self._bases.runner_names()
         self.runner_on_first = a
         self.runner_on_second = b
@@ -1269,18 +1269,20 @@ class GameState:
             destination_base_name = base_num
         if self.batter == player_name:
             self.batter_destination = destination_base_name
-            advance_string = self._bases.advance(self.batter, destination_base_name)
+            player_name = self.batter
         elif self.runner_on_first == player_name:
             self.runner_on_first_destination = destination_base_name
-            advance_string = self._bases.advance(self.runner_on_first, destination_base_name)
+            player_name = self.runner_on_first
         elif self.runner_on_second == player_name:
             self.runner_on_second_destination = destination_base_name
-            advance_string = self._bases.advance(self.runner_on_second, destination_base_name)
+            player_name = self.runner_on_second
         elif self.runner_on_third == player_name:
             self.runner_on_third_destination = destination_base_name
-            advance_string = self._bases.advance(self.runner_on_third, destination_base_name)
-        else:
-            logger.warning("Advancing {} to {}.  Player can not be found at bat or on base.  base state:\n{}".format(player_name, destination_base_name, self._bases.player_locations))
+            player_name = self.runner_on_third
+
+        advance_string = self._bases.advance(player_name, destination_base_name)
+
+        #logger.warning("Advancing {} to {}.  Player can not be found at bat or on base.  base state:\n{}".format(player_name, destination_base_name, self._bases.player_locations))
 
         if self.batter == player_name:
             self.fate_of_batter = self._bases.player_fate_id(self.batter)
