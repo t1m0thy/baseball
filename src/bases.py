@@ -103,7 +103,7 @@ class Bases:
 
     def replace_runner(self, new_player, replacing_player, base=None):
         if base is None:
-            base =  self.get_runner_base(replacing_player)
+            base = self.get_runner_base(replacing_player)
         if self.on_base(base) != replacing_player:
             raise StandardError("{} is not on base {} for {} to replace".format(replacing_player, base, new_player))
         replacing_runner_fate_id = self.player_fate_id(replacing_player)
@@ -131,7 +131,7 @@ class Bases:
         7    123    Loaded
         """
         # 1 if on base, 0 if not
-        base_state =  [str(int(self.on_base(i) != None)) for i in (3,2,1)]
+        base_state = [str(int(self.on_base(i) is not None)) for i in (3, 2, 1)]
         return int(''.join(base_state), 2)
 
     def new_fate(self, player_name):
@@ -147,4 +147,3 @@ class Bases:
 
     def fate_for(self, fate_id):
         return self.fates_dict[fate_id]
-
