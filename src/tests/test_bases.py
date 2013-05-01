@@ -1,6 +1,6 @@
 import unittest
 import bases
-
+from lineup import Name
 
 class TestCase(unittest.TestCase):
     def setUp(self):
@@ -19,6 +19,13 @@ class TestCase(unittest.TestCase):
         self.bases.advance("Bert", 2)
         self.bases.advance("Ernie", 2)
         self.assertEquals(self.bases.force_runners(), [("Bert", 3)])
+
+    def test_name(self):
+        b = Name("Bert")
+        b.set_id("bert001")
+        self.bases.advance(b, 2)
+        self.bases.advance("Bert", 3)
+        self.assertEquals(self.bases.on_base(3).id(), "bert001")
 
     def test_badbase(self):
         self.assertRaises(ValueError, self.bases.advance, player_name="Guy", base=7)
