@@ -21,5 +21,7 @@ class PlayerInfo(Base):
     POSITIONS = Column(String(12))
     WEIGHT = Column(String(12))
     ID_POINTSTREAK = Column(Integer)
+    SBS_ID = Column(String(255))
+    TEAM_ID = Column(String(255))
     #PREVIOUS_COLLEGE
     #HIGH_SCHOOL
