@@ -105,11 +105,10 @@ class PointStreakScraper(GameScraper):
     def halfs(self):
         """ iterator that returns HalfInning Objects through the game """
         halfs = [e for e in self.root.find(".//{*}PlayByPlay").getchildren()]
-        for half in halfs:  #what a mouthful!
+        for half in halfs:  # what a mouthful!
             yield PSPHalfInningXML(half)
 
-
-    def game_rosters(self):
+    def game_rosters(self, base_away_players=None, base_home_players=None):
         """ return full list of all players in the game """
         away = self.root.find(".//{*}VisitingTeam")
         away_offense = [dict(e.items()) for e in away.find(".//{*}Offense").getchildren()]
@@ -121,8 +120,16 @@ class PointStreakScraper(GameScraper):
         home_replaced = [dict(e.items()) for e in home.find(".//{*}ReplacedOffense").getchildren()]
         home_pitchers = [dict(e.items() + [("Position", "P")]) for e in home.find(".//{*}Pitchers").getchildren()]
 
-        away_roster = PlayerList()
-        home_roster = PlayerList()
+        if base_away_players is None:
+            away_roster = PlayerList()
+        else:
+            away_roster = base_away_players
+
+        if base_home_players is None:
+            home_roster = PlayerList()
+        else:
+            home_roster = base_home_players
+
         away_roster.update_players(self._make_players(is_home=False, player_dict_list=away_offense + away_replaced + away_pitchers))
         home_roster.update_players(self._make_players(is_home=True, player_dict_list=home_offense + home_replaced + home_pitchers))
 
@@ -292,17 +299,18 @@ class PointStreakScraper(GameScraper):
     def _div_id_dict(self, element):
         return dict((d.attrs["id"], d) for d in element.findAll("div") if d.has_attr("id"))
 
-    def get_player_id(self, is_home, player):
+    def get_player_id_and_stats(self, is_home, player):
         if is_home:
             search_list = self._home_html_player_list
         else:
             search_list = self._away_html_player_list
         try:
             bestmatch = player.find_closest_name(search_list)
-            return bestmatch.iddict.get("pointstreak")
+            return bestmatch.iddict.get("pointstreak"), bestmatch.game_stats
         except:
             logger.error("Failed to find match for:\n{} \nin list:\n{}".format(player, search_list))
             raise
+
 
     def _update_html_player_table(self, is_home, table):
         """
@@ -363,7 +371,8 @@ class PointStreakScraper(GameScraper):
         for player in player_list:
             player_id = None
             try:
-                player_id = self.get_player_id(is_home, player)
+                player_id, game_stats = self.get_player_id_and_stats(is_home, player)
+                player.game_stats.update(game_stats)
             except:
                 logger.exception("unable to find id for player {}".format(player.name))
 
