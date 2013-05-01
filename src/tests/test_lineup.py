@@ -12,7 +12,7 @@ class TestNames(unittest.TestCase):
 
     def test_equality2(self):
         a = Name("Hirzel, Tim")
-        a.id = "hirzt001"
+        a.set_id("hirzt001")
         b = "hirzt001"
         self.assertTrue(a == b)
 
@@ -20,6 +20,11 @@ class TestNames(unittest.TestCase):
         a = Name("Hirzel, Tim")
         b = "hirzt"
         self.assertTrue(a == b)
+
+    def test_equality4(self):
+        a = Name("Hirzel, Tim")
+        b = Name("Bob Brown")
+        self.assertNotEqual(a.last, b.last)
 
 
 class TestPlayer(unittest.TestCase):
@@ -70,6 +75,19 @@ class TestLineup(unittest.TestCase):
         self.assertFalse(self.lineup.is_complete())
         self.assertRaises(LineupError, self.lineup.is_complete, raise_reason=True)
 
+    def test_complete(self):
+        self.lineup.add_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
+        self.lineup.add_player(Player("Dwight Evans", 24, 2, "RF", RIGHT))
+        self.lineup.add_player(Player("Jim Rice", 14, 3, "LF", RIGHT))
+        self.lineup.add_player(Player("Mike Easler", 22, 4, "DH", LEFT))
+        self.lineup.add_player(Player("Tony Armas", 20, 5, "CF", RIGHT))
+        self.lineup.add_player(Player("Bill Buckner", 6, 6, "1B", LEFT))
+        self.lineup.add_player(Player("Rich Gedman", 10, 7, "C", LEFT))
+        self.lineup.add_player(Player("Marty Barret", 17, 8, "2B", RIGHT))
+        self.lineup.add_player(Player("Jackie Gutierrez", 41, 9, "SS", RIGHT))
+        self.lineup.add_player(Player("Oil Can Boyd", 41, 10, "P", RIGHT))
+        self.assertTrue(self.lineup.is_complete())
+
     def test_update(self):
         self.lineup.add_player(Player("Wade Boggs", 26, 1, "P", LEFT))
         self.lineup.update_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
@@ -80,9 +98,15 @@ class TestLineup(unittest.TestCase):
         self.lineup.update_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
         self.assertRaises(StandardError, self.lineup.update_player, Player(None, 26, 1, "3B", LEFT))
 
+    def test_update_to_add(self):
+        self.lineup.add_player(Player("Wade Boggs", 26, 1, "P", LEFT))
+        self.lineup.update_player(Player("Bill Buckner", 6, 6, "1B", LEFT))
+        self.assertEquals(2, len(self.lineup))
+
     def test_find_by_position(self):
         self.lineup.add_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
         self.assertEquals("Wade Boggs", self.lineup.find_player_by_position("3B").name)
+
 
 class TestCaseComplete(unittest.TestCase):
     def setUp(self):
@@ -90,7 +114,7 @@ class TestCaseComplete(unittest.TestCase):
         self.lineup.add_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
         self.lineup.add_player(Player("Dwight Evans", 24, 2, "RF", RIGHT))
         self.lineup.add_player(Player("Jim Rice", 14, 3, "LF", RIGHT))
-        self.lineup.add_player(Player("Mike Easler", 'X', 4, "DH", LEFT)) # test numberless 'X'
+        self.lineup.add_player(Player("Mike Easler", 'X', 4, "DH", LEFT))  # test numberless 'X'
         self.lineup.add_player(Player("Tony Armas", 20, 5, "CF", RIGHT))
         self.lineup.add_player(Player("Bill Buckner", 6, 6, "1B", LEFT))
         self.lineup.add_player(Player("Rich Gedman", 10, 7, "C", LEFT))

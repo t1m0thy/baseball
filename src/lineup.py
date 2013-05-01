@@ -16,7 +16,6 @@ class Name(str):
             if ',' in name:
                 last, first = name.split(',', 1)
                 name = first.strip() + ' ' + last.strip()
-            first, last = name.split(" ", 1)
         except AttributeError:
             pass
         self._id = None
@@ -26,8 +25,11 @@ class Name(str):
         if self._id is not None:
             return self._id
         else:
-            first, last = self.split(" ", 1)
-            return last.replace(" ", "")[:4].lower() + first[0].lower()
+            try:
+                first, last = self.split(" ", 1)
+                return last.replace(" ", "")[:4].lower() + first[0].lower()
+            except ValueError:
+                self.replace(" ", "")[:5].lower()
 
     def set_id(self, _id):
         self._id = _id
@@ -35,20 +37,29 @@ class Name(str):
     def __eq__(self, other):
         if self.lower() == str(other).strip().lower():
             return True
-        elif self.id() == str(other):
-            return True
-        elif hasattr(other, "id") and self.id() == other.id():
-            return True
+        if self.id() is not None:
+            if self.id() == str(other):
+                return True
+            elif hasattr(other, "id") and self.id() == other.id():
+                return True
         return False
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     def first(self):
-        return self.split(' ', 1)[0]
+        splitname = self.split(' ', 1)
+        if len(splitname) == 2:
+            return splitname[0]
+        else:
+            return None
 
     def last(self):
-        return self.split(' ', 1)[1]
+        splitname = self.split(' ', 1)
+        if len(splitname) == 2:
+            return splitname[1]
+        else:
+            return splitname
 
 
 class Player:
@@ -93,7 +104,7 @@ class Player:
         self.throw_hand = throw_hand
 
         self.iddict = iddict
-        self.team_id= team_id
+        self.team_id = team_id
 
         self.atbats = 0
         self.game_stats = {}
@@ -125,6 +136,7 @@ class Player:
         out.POSITIONS = self.positions
         out.WEIGHT = self.weight
         out.SBS_ID = self.name.id()
+        out.TEAM_ID = self.team_id
         return out
 
     def _verified_position(self, position):
@@ -226,6 +238,7 @@ class Player:
 
     def get_replacing_field_position(self):
         return self._replacing_field_position
+
 
 class PlayerList(list):
     """
@@ -341,7 +354,7 @@ class Lineup(PlayerList):
         except KeyError:
             # no DH, so there should be a pitcher in the order
             try:
-                if self.find_player_by_position(P).order == None:
+                if self.find_player_by_position(P).order is None:
                     if raise_reason:
                         raise LineupError("No DH in lineup and pitcher not in order")
                     return False
