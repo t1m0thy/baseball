@@ -1,4 +1,3 @@
-import os
 import logging
 logger = logging.getLogger("manager")
 
@@ -18,6 +17,17 @@ from models import playerinfo
 from models import gameinfomodel
 
 
+def find_new_player_id(session, base_name):
+    index = 1
+    while index < 10:
+        new_id = base_name + "{:03d}".format(index)
+        player_models = session.query(PlayerInfo).filter_by(SBS_ID=new_id)
+        if player_models.count() == 0:
+            return new_id
+        index += 1
+    raise StandardError("Could not find a unqiue id for base name {}".format(base_name))
+
+
 def import_game(gameid, cache_path=None, game=None, session=None):
     gameid = str(gameid)
 
@@ -32,17 +42,21 @@ def import_game(gameid, cache_path=None, game=None, session=None):
     away_starting_lineup, home_starting_lineup = scraper.starting_lineups()
     game_info.set_starting_players(away_starting_lineup, home_starting_lineup)
 
-    away_roster, home_roster = scraper.game_rosters()
+    # pass in starting lineups so the rosters include those player objects
+    away_roster, home_roster = scraper.game_rosters(away_starting_lineup, home_starting_lineup)
 
     # sync up with the player database.
-    if session:
+    if session is not None:
         for player in away_roster + home_roster:
-            player_models = session.query(PlayerInfo).filter_by(FIRST_NAME=player.name.first(), LAST_NAME=player.name.last())
+            player_models = session.query(PlayerInfo).filter_by(FIRST_NAME=player.name.first(), LAST_NAME=player.name.last(), TEAM_ID=player.team_id)
             if player_models.count() < 1:
+                sbs_id = find_new_player_id(session, player.name.id())
+                player.name.set_id(sbs_id)
                 session.add(player.to_model())
             elif player_models.count() > 1:
                 logger.warning("More than one player found for name: {} {}".format(player.name.first(), player.name.last()))
             elif player_models.count() == 1:
+                player.name.set_id(player_models[0].SBS_ID)
                 m = player.to_model(player_models[0])  # update existing model
                 session.merge(m)
         game_info_query = session.query(gameinfomodel.GameInfoModel).filter_by(GAME_ID=gameid)
@@ -97,14 +111,14 @@ def import_game(gameid, cache_path=None, game=None, session=None):
                 raise  # StandardError("Error with event: {}".format(raw_event.text()))
     game.set_previous_event_as_game_end()
 
-    for p in game.home_roster + game.away_roster:
-        print p
-        if p.atbats != p.game_stats.get("AB", 0):
-            logger.error("{} does no equal {} for player ".format(p.atbats, p.game_stats.get("AB", 0), p.name))
+    # for p in game.home_roster + game.away_roster:
+    #     if p and p.atbats != p.game_stats.get("AB", 0):
+    #         logger.error(" counted AB {} does not equal reported AB {} for player {}".format(p.atbats, p.game_stats.get("AB", 0), p.name))
 
-    for e in game.events():
-        session.add(e)
-    session.commit()
+    if session is not None:
+        for e in game.events():
+            session.add(e)
+        session.commit()
     return game
 
 
