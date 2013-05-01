@@ -317,7 +317,7 @@ class GameState:
             if type(val) == bool:
                 val = ['F', 'T'][val]
             if type(val) == Name:
-                val = val.id
+                val = val.id()
 
             newevent.__dict__[modelattribute] = val
         return newevent
@@ -351,7 +351,7 @@ class GameState:
             if self.get_event_value(e, "inning") != self.inning:
                 break
             if self.get_event_value(e, attribute_name) == '?':
-                self.set_event_value(e, attribute_name, player_name.id)
+                self.set_event_value(e, attribute_name, player_name.id())
             else:
                 break
         self._missing_fielders.remove(position)
@@ -435,10 +435,8 @@ class GameState:
         if missing:
             possibles = [player for player in self.fielding_lineup if player.get_replacing_field_position() in missing]
             possibles_dict = dict([(player.get_replacing_field_position(), player) for player in possibles])
-            print "POSS_DICT", possibles_dict
             possible_positions = possibles_dict.keys()
             possible_positions.sort()
-            print "THE MATCH", possible_positions, missing
             if possible_positions == missing:
                 for position in possibles_dict:
                     new_player = possibles_dict[position]
@@ -558,11 +556,13 @@ class GameState:
         this is because the runner_on_* attributes indicate the positions of runners
         at the beginning of a given event
         """
+        moved = self._bases.force_runners()
+        for runner, base in moved:
+            logger.warning("{} was forced to {} base to resolve base position that was not explicitly given".format(runner, base))
         a, b, c = self._bases.runner_names()
-        self.runner_on_first = a #Name(a)
-        self.runner_on_second = b #Name(b)
-        self.runner_on_third = c #Name(c)
-
+        self.runner_on_first = a
+        self.runner_on_second = b
+        self.runner_on_third = c
         a, b, c = self._bases.runners_fate_ids()
         self.fate_of_runner_on_first = a
         self.fate_of_runner_on_second = b
@@ -1269,14 +1269,18 @@ class GameState:
             destination_base_name = base_num
         if self.batter == player_name:
             self.batter_destination = destination_base_name
+            advance_string = self._bases.advance(self.batter, destination_base_name)
         elif self.runner_on_first == player_name:
             self.runner_on_first_destination = destination_base_name
+            advance_string = self._bases.advance(self.runner_on_first, destination_base_name)
         elif self.runner_on_second == player_name:
             self.runner_on_second_destination = destination_base_name
+            advance_string = self._bases.advance(self.runner_on_second, destination_base_name)
         elif self.runner_on_third == player_name:
             self.runner_on_third_destination = destination_base_name
-
-        advance_string = self._bases.advance(player_name, destination_base_name)
+            advance_string = self._bases.advance(self.runner_on_third, destination_base_name)
+        else:
+            logger.warning("Advancing {} to {}.  Player can not be found at bat or on base.  base state:\n{}".format(player_name, destination_base_name, self._bases.player_locations))
 
         if self.batter == player_name:
             self.fate_of_batter = self._bases.player_fate_id(self.batter)
