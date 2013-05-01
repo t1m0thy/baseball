@@ -53,30 +53,30 @@ class Bases:
             base_num = 4
         else:
             base_num = base
-            
+
         if player_name in self.player_locations:
             assert (base_num > self.player_locations[player_name])
-            startbase = self.player_locations[player_name]    
+            startbase = self.player_locations[player_name]
             if base_num == 4:
                 # left bases with score
                 del(self.player_locations[player_name])
         else:
             startbase = 'B'
             self.new_fate(player_name)
-        
+
         self.fates_dict[self.fates_id_lookup[player_name]] = base
-            
+
         if base_num == 4:
             endbase = 'H'
         else:
             self.player_locations[player_name] = base_num
-            endbase = str(base_num)        
-            
+            endbase = str(base_num)
+
         return "{}-{}".format(startbase, endbase)
 
     def get_runner_base(self, player_name):
         return self.runner_names().index(player_name) + 1
-    
+
     def replace_runner(self, new_player, replacing_player, base=None):
         if base is None:
             base =  self.get_runner_base(replacing_player)
@@ -91,16 +91,16 @@ class Bases:
     def code(self):
         """
         return the base code according to this lookup:
-        
+
         BASE CODE LOOKUP
         CD:  short:  long:
-        0    ___    Empty     
-        1    1__    1B only   
-        2    _2_    2B only    
-        3    12_    1B & 2B    
-        4    __3    3B only    
-        5    1_3    1B & 3B    
-        6    _23    2B & 3B    
+        0    ___    Empty
+        1    1__    1B only
+        2    _2_    2B only
+        3    12_    1B & 2B
+        4    __3    3B only
+        5    1_3    1B & 3B
+        6    _23    2B & 3B
         7    123    Loaded
         """
         # 1 if on base, 0 if not
@@ -111,14 +111,13 @@ class Bases:
         new_uuid = uuid.uuid4()
         self.fates_dict[new_uuid] = 0
         self.fates_id_lookup[player_name] = new_uuid
-    
+
     def player_fate_id(self, player_name):
         return self.fates_id_lookup[player_name]
-    
+
     def runners_fate_ids(self):
         return [self.player_fate_id(name) for name in self.runner_names()]
 
     def fate_for(self, fate_id):
         return self.fates_dict[fate_id]
-    
-    
+
