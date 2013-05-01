@@ -15,7 +15,7 @@ class PointStreakParser:
         self.event_cache = []
         self.player_names = player_names
         self.setup_parser()
-        
+
     def set_game(self, game):
         self.event_cache = []
         self.gamewrap.set_game(game)
@@ -24,9 +24,9 @@ class PointStreakParser:
         #=======================================================================
         # Names
         #=======================================================================
-        
+
         catch_all = pp.OneOrMore(pp.Word(pp.alphas+'-')).setResultsName(constants.PARSING_PLAYER.NAME)
-        if self.player_names:                    
+        if self.player_names:
             player_no_num = pp.Keyword(self.player_names[0], caseless=True)
             for name in self.player_names[1:]:
                 player_no_num |= pp.Keyword(name, caseless=True)
@@ -39,12 +39,12 @@ class PointStreakParser:
                     kw2 = pp.Keyword(version2, caseless=True)
                     player_no_num |= kw2
             player_no_num |= catch_all
-        
+
         else:
             player_no_num = catch_all
         player_no_num = (player_no_num).setResultsName(constants.PARSING_PLAYER.NAME)
         player = (pp.Word(pp.nums).setResultsName(constants.PARSING_PLAYER.NUMBER) + \
-                  player_no_num).setResultsName(constants.PARSING.PLAYER)
+            player_no_num).setResultsName(constants.PARSING.PLAYER)
 
 
         #===========================================================================
@@ -55,27 +55,26 @@ class PointStreakParser:
         left_paren = pp.Literal('(').suppress()
         right_paren = pp.Literal(')').suppress()
         period = pp.Literal('.').suppress()
-        
-        
+
         position = pp.Keyword("Pitcher", caseless=True) | \
-                        pp.Keyword("Catcher", caseless=True) | \
-                        pp.Keyword("First Baseman", caseless=True) | \
-                        pp.Keyword("Second Baseman", caseless=True) | \
-                        pp.Keyword("Third Baseman", caseless=True) | \
-                        pp.Keyword("ShortStop", caseless=True) | \
-                        pp.Keyword("Left Fielder", caseless=True) | \
-                        pp.Keyword("Center Fielder", caseless=True) | \
-                        pp.Keyword("Right Fielder", caseless=True)
+            pp.Keyword("Catcher", caseless=True) | \
+            pp.Keyword("First Baseman", caseless=True) | \
+            pp.Keyword("Second Baseman", caseless=True) | \
+            pp.Keyword("Third Baseman", caseless=True) | \
+            pp.Keyword("ShortStop", caseless=True) | \
+            pp.Keyword("Left Fielder", caseless=True) | \
+            pp.Keyword("Center Fielder", caseless=True) | \
+            pp.Keyword("Right Fielder", caseless=True)
 
         location = pp.Keyword("pitcher", caseless=True) | \
-                        pp.Keyword("Catcher", caseless=True) | \
-                        pp.Keyword("First Base", caseless=True) | \
-                        pp.Keyword("Second Base", caseless=True) | \
-                        pp.Keyword("Third Base", caseless=True) | \
-                        pp.Keyword("ShortStop", caseless=True) | \
-                        pp.Keyword("Left Field", caseless=True) | \
-                        pp.Keyword("Center Field", caseless=True) | \
-                        pp.Keyword("Right Field", caseless=True)
+            pp.Keyword("Catcher", caseless=True) | \
+            pp.Keyword("First Base", caseless=True) | \
+            pp.Keyword("Second Base", caseless=True) | \
+            pp.Keyword("Third Base", caseless=True) | \
+            pp.Keyword("ShortStop", caseless=True) | \
+            pp.Keyword("Left Field", caseless=True) | \
+            pp.Keyword("Center Field", caseless=True) | \
+            pp.Keyword("Right Field", caseless=True)
 
         #======================================================================
         # PITCHING
@@ -118,7 +117,7 @@ class PointStreakParser:
                    (position | location).setResultsName(constants.PARSING.POSITION) +
                    pp.Optional(pp.Keyword("in foul territory", caseless=True).setResultsName(constants.PARSING_OUTS.FOUL))
                    ).setResultsName(constants.PARSING_OUTS.FLY_OUT)
-                   
+
         sacrifice_fly = (pp.Keyword("sacrifice fly to", caseless=True).setResultsName(constants.PARSING_OUTS.SACRIFICE)
                          + position.setResultsName(constants.PARSING.POSITION)).setResultsName(constants.PARSING_OUTS.FLY_OUT)
         possibles = double_play | triple_play | \
@@ -147,7 +146,7 @@ class PointStreakParser:
         hit_location = pp.Keyword("to") + pp.Optional(pp.Keyword("the")) + location.setResultsName(constants.PARSING.LOCATION)
         position_number = pp.Word(pp.nums).setResultsName(constants.PARSING.LOCATION)
         wild_pitch = pp.Keyword("wild pitch", caseless=True).setResultsName(constants.PARSE_ADVANCE.WILD_PITCH)
-        
+
         single = ((pp.Keyword("single", caseless=True) +
                   pp.Optional(hit_location) | \
                   (pp.Keyword("1B").setResultsName(constants.PARSE_ADVANCE.EXTRA_BASES) + position_number))
@@ -177,7 +176,7 @@ class PointStreakParser:
                  pp.Optional(pp.Word(pp.nums))
                 )
                 ).setResultsName(constants.PARSING.ERROR)
-        
+
         pass_ball = pp.Keyword("pass ball", caseless=True).setResultsName(constants.PARSE_ADVANCE.PASS_BALL)
         ground_rule = (pp.Keyword("ground rule", caseless=True) +
                        pp.oneOf("single double triple", caseless=True)
@@ -188,7 +187,7 @@ class PointStreakParser:
                     pp.Optional(pp.Keyword("throw", caseless=True) | pp.Keyword("T") |  error |  pp.Keyword("bu") | pp.Keyword("cs"))
         unknown = pp.OneOrMore(pp.Word(pp.alphanums)).setResultsName(constants.PARSE_ADVANCE.UNKNOWN)
         empty = pp.Empty().setResultsName(constants.PARSE_ADVANCE.UNKNOWN)
-        
+
         advance_desc = left_paren + (balk | wild_pitch | single | double | triple | home_run | dropped_third_strike | \
                                        fielders_choice | hit_by_pitch | throw | walk | stolen_base | \
                                        error | player_num | pass_ball | ground_rule | intentional_walk | unknown | empty
