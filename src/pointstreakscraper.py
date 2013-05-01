@@ -133,8 +133,8 @@ class PointStreakScraper(GameScraper):
         else:
             home_roster = base_home_players
 
-        away_roster.update_players(self._make_players(is_home=False, player_dict_list=away_offense + away_replaced + away_pitchers))
-        home_roster.update_players(self._make_players(is_home=True, player_dict_list=home_offense + home_replaced + home_pitchers))
+        away_roster.update_players(self._make_players(player_dict_list=away_offense + away_replaced + away_pitchers, team_id=self.away_team()))
+        home_roster.update_players(self._make_players(player_dict_list=home_offense + home_replaced + home_pitchers, team_id=self.home_team()))
 
         self._complete_player_profile(False, away_roster)
         self._complete_player_profile(True, home_roster)
@@ -156,11 +156,11 @@ class PointStreakScraper(GameScraper):
         home_defense = [dict(e.items()) for e in home.find(".//{*}Defense").getchildren()]
         home_pitchers = [dict(e.items()) for e in home.find(".//{*}Pitchers").getchildren()]
 
-        away_offense_player_list = self._make_players(is_home=False, player_dict_list=away_offense)
-        away_defense_player_list = self._make_players(is_home=False, player_dict_list=away_defense)
+        away_offense_player_list = self._make_players(player_dict_list=away_offense)
+        away_defense_player_list = self._make_players(player_dict_list=away_defense)
 
         if away_pitchers:
-            starting_pitcher = self._make_pitcher(is_home=False, player_dict=away_pitchers[0])
+            starting_pitcher = self._make_pitcher(player_dict=away_pitchers[0])
             if starting_pitcher is not None:
                 try:
                     away_defense_player_list.find_player_by_name(starting_pitcher.name)
@@ -168,11 +168,11 @@ class PointStreakScraper(GameScraper):
                 except KeyError:
                     away_defense_player_list.insert(0, starting_pitcher)
 
-        home_offense_player_list = self._make_players(is_home=False, player_dict_list=home_offense)
-        home_defense_player_list = self._make_players(is_home=False, player_dict_list=home_defense)
+        home_offense_player_list = self._make_players(player_dict_list=home_offense)
+        home_defense_player_list = self._make_players(player_dict_list=home_defense)
 
         if home_pitchers:
-            starting_pitcher = self._make_pitcher(is_home=True, player_dict=home_pitchers[0])
+            starting_pitcher = self._make_pitcher(player_dict=home_pitchers[0])
             if starting_pitcher is not None:
                 try:
                     home_defense_player_list.find_player_by_name(starting_pitcher.name)
@@ -269,20 +269,20 @@ class PointStreakScraper(GameScraper):
             cache_filename = os.path.join(self._cache_path, GAME_XML_SEQ_CACHE_PATH % (("PS" + self.gameid), seq))
         return get_cached_url(url, cache_filename, force_reload)
 
-    def _make_pitcher(self, is_home, player_dict):
+    def _make_pitcher(self, player_dict, team_id=None):
         new_player = Player(player_dict.get("Name"),
                             player_dict.get("Number"),
                             player_dict.get("Order"),
                             constants.P,
                             player_dict.get("Hand"),
-                            iddict={"pointstreak": None})
+                            iddict={"pointstreak": None},
+                            team_id=team_id)
         if new_player.name is not None:
-            new_player.name = new_player.name.replace("&apos;", "'").replace("_apos;", "'")
             return new_player
         else:
             return None
 
-    def _make_players(self, is_home, player_dict_list):
+    def _make_players(self, player_dict_list, team_id=None):
         out = PlayerList()
         for player_dict in player_dict_list:
             try:
@@ -291,7 +291,8 @@ class PointStreakScraper(GameScraper):
                                     player_dict.get("Order"),
                                     player_dict.get("Position"),
                                     player_dict.get("Hand"),
-                                    iddict={"pointstreak": None})
+                                    iddict={"pointstreak": None},
+                                    team_id=team_id)
                 if new_player.name is not None:
                     out.add_player(new_player)
             except (AttributeError, KeyError):
