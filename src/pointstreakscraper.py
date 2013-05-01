@@ -63,6 +63,7 @@ def make_html_url(gameid):
 
 PS_JSON_URL = "http://www.pointstreak.com/baseball/ajax/schedule_ajax.php?action=showalldates&s={}"
 
+
 def scrape_pointstreak_gameids(html):
     playoff_soup = BeautifulSoup(html)
     links = playoff_soup.find_all("a")
@@ -70,14 +71,16 @@ def scrape_pointstreak_gameids(html):
     gameids = [s.attrs["href"].split('=')[1] for s in scores]
     return gameids
 
+
 def scrape_season_gameids(seasonid, cache_path=None):
     if cache_path is None:
         cache_path = DEFAULT_CACHE_PATH
-    LISTINGS_CACHE_PATH = os.path.join(cache_path, "listings","list_{}.json".format(seasonid))
+    LISTINGS_CACHE_PATH = os.path.join(cache_path, "listings", "list_{}.json".format(seasonid))
     season = get_cached_url(PS_JSON_URL.format(seasonid), LISTINGS_CACHE_PATH)
     html = json.loads(season)["html"]
     ids = scrape_pointstreak_gameids(html)
     return ids
+
 
 class PointStreakScraper(GameScraper):
     def __init__(self, gameid, cache_path=None):
@@ -164,7 +167,6 @@ class PointStreakScraper(GameScraper):
                     away_defense_player_list.update_player(starting_pitcher)
                 except KeyError:
                     away_defense_player_list.insert(0, starting_pitcher)
-
 
         home_offense_player_list = self._make_players(is_home=False, player_dict_list=home_offense)
         home_defense_player_list = self._make_players(is_home=False, player_dict_list=home_defense)
@@ -269,26 +271,27 @@ class PointStreakScraper(GameScraper):
 
     def _make_pitcher(self, is_home, player_dict):
         new_player = Player(player_dict.get("Name"),
-                                  player_dict.get("Number"),
-                                  player_dict.get("Order"),
-                                  constants.P,
-                                  player_dict.get("Hand"),
-                                  iddict={"pointstreak": None})
+                            player_dict.get("Number"),
+                            player_dict.get("Order"),
+                            constants.P,
+                            player_dict.get("Hand"),
+                            iddict={"pointstreak": None})
         if new_player.name is not None:
-            new_player.name = new_player.name.replace("&apos;","'").replace("_apos;","'")
+            new_player.name = new_player.name.replace("&apos;", "'").replace("_apos;", "'")
             return new_player
         else:
             return None
+
     def _make_players(self, is_home, player_dict_list):
         out = PlayerList()
         for player_dict in player_dict_list:
             try:
                 new_player = Player(player_dict.get("Name"),
-                                      player_dict.get("Number"),
-                                      player_dict.get("Order"),
-                                      player_dict.get("Position"),
-                                      player_dict.get("Hand"),
-                                      iddict={"pointstreak": None})
+                                    player_dict.get("Number"),
+                                    player_dict.get("Order"),
+                                    player_dict.get("Position"),
+                                    player_dict.get("Hand"),
+                                    iddict={"pointstreak": None})
                 if new_player.name is not None:
                     out.add_player(new_player)
             except (AttributeError, KeyError):
@@ -310,7 +313,6 @@ class PointStreakScraper(GameScraper):
         except:
             logger.error("Failed to find match for:\n{} \nin list:\n{}".format(player, search_list))
             raise
-
 
     def _update_html_player_table(self, is_home, table):
         """
@@ -403,6 +405,7 @@ class PointStreakScraper(GameScraper):
             except:
                 logger.exception("Unable to find extra info on {}".format(player.name))
 
+
 class PSPHalfInningXML(HalfInning):
     def __init__(self, etree):
         self._etree = etree
@@ -426,7 +429,7 @@ class PSPRawEventXML(RawEvent):
         self._batter_name = batter
         self._batter_number = number
         # If this is a sub, add the Type to the beginning of the string: ie.  "Offensive Substitution"
-        if sub_type != None:
+        if sub_type is not None:
             text = sub_type + '. ' + text
         self._text = text
 
@@ -437,7 +440,8 @@ class PSPRawEventXML(RawEvent):
         if self.is_sub():
             return StandardError("No batter for substitution event")
         else:
-            return self._batter_name.replace("&apos;","'").replace("_apos;","'")
+            return self._batter_name.replace("&apos;", "'").replace("_apos;", "'")
+
     def batter_number(self):
         if self.is_sub():
             return StandardError("No batter for substitution event")
@@ -445,14 +449,10 @@ class PSPRawEventXML(RawEvent):
             return self._batter_number
 
     def text(self):
-        return self._text.replace("&apos;","'").replace("_apos;","'")
+        return self._text.replace("&apos;", "'").replace("_apos;", "'")
 
     def title(self):
         if self.is_sub():
             return self._type
         else:
             return "{} #{} {}".format(self._type, self._batter_number, self._batter_name)
-
-
-
-
