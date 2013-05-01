@@ -17,17 +17,27 @@ class Name(str):
                 last, first = name.split(',', 1)
                 name = first.strip() + ' ' + last.strip()
             first, last = name.split(" ", 1)
-            self.id = last.replace(" ", "")[:4].lower() + first[0].lower()
         except AttributeError:
             pass
+        self._id = None
         return str.__new__(self, name)
+
+    def id(self):
+        if self._id is not None:
+            return self._id
+        else:
+            first, last = self.split(" ", 1)
+            return last.replace(" ", "")[:4].lower() + first[0].lower()
+
+    def set_id(self, _id):
+        self._id = _id
 
     def __eq__(self, other):
         if self.lower() == str(other).strip().lower():
             return True
-        elif self.id == str(other):
+        elif self.id() == str(other):
             return True
-        elif hasattr(other, "id") and self.id == other.id:
+        elif hasattr(other, "id") and self.id() == other.id():
             return True
         return False
 
@@ -42,7 +52,7 @@ class Name(str):
 
 
 class Player:
-    def __init__(self, name, number=None, order=None, position=None, bat_hand='?', throw_hand='?', iddict={}):
+    def __init__(self, name, number=None, order=None, position=None, bat_hand='?', throw_hand='?', iddict={}, team_id=None):
         """
         setup Player object
 
@@ -83,6 +93,8 @@ class Player:
         self.throw_hand = throw_hand
 
         self.iddict = iddict
+        self.team_id= team_id
+
         self.atbats = 0
         self.game_stats = {}
 
@@ -112,7 +124,7 @@ class Player:
             out.ID_POINTSTREAK = int(psid)
         out.POSITIONS = self.positions
         out.WEIGHT = self.weight
-        out.SBS_ID = self.name.id
+        out.SBS_ID = self.name.id()
         return out
 
     def _verified_position(self, position):
