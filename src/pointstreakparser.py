@@ -181,7 +181,7 @@ class PointStreakParser:
         ground_rule = (pp.Keyword("ground rule", caseless=True) +
                        pp.oneOf("single double triple", caseless=True)
                        ).setResultsName(constants.PARSE_ADVANCE.GROUND_RULE)
-        throw = (pp.Literal("T") + pp.Word(pp.nums)).setResultsName(constants.PARSE_ADVANCE.THROW)
+        throw = (pp.Literal("T") + pp.Optional(pp.Word(pp.nums))).setResultsName(constants.PARSE_ADVANCE.THROW)
         intentional_walk = pp.Keyword("intentional walk", caseless=True).setResultsName(constants.PARSE_ADVANCE.INTENTIONAL_WALK)
         player_num = pp.Word(pp.nums).setResultsName(constants.PARSE_ADVANCE.PLAYER_NUM) + \
                     pp.Optional(pp.Keyword("throw", caseless=True) | pp.Keyword("T") |  error |  pp.Keyword("bu") | pp.Keyword("cs"))
