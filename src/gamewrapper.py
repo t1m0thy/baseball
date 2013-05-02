@@ -23,7 +23,7 @@ class GameWrapper:
 
     def pickoff(self, text, location, tokens):
         base = ' '.join(tokens[constants.PARSING.BASE])
-        
+
         throw_position = tokens.get(constants.PARSE_PITCHING.THROW_POSITION, "Pitcher")
         catch_position = tokens.get(constants.PARSE_PITCHING.CATCH_POSITION)
         self._game.pitch_pickoff_attempt(base, throw_position, catch_position)
@@ -60,6 +60,8 @@ class GameWrapper:
         elif constants.PARSING_OUTS.STRIKE_OUT in description:
             self._game.out_strike_out(player_name,
                                       constants.PARSING_OUTS.SWINGING in description)
+        elif constants.PARSING_OUTS.DROPPED_THIRD in description:
+            self._game.out_dropped_third_strike(player_name)
         elif constants.PARSING_OUTS.CAUGHT_STEALING in description:
             self._game.out_caught_stealing(player_name, description.get(constants.PARSING_OUTS.THROWN_OUT),
                                            constants.PARSING_OUTS.DOUBLE_PLAY in description)
@@ -88,11 +90,11 @@ class GameWrapper:
     def parse_offensive_sub(self, text, location, tokens):
         new_player_name = tokens[constants.PARSING.NEW_PLAYER][1:]
         replacing_name = tokens.get(constants.PARSING.REPLACING, [])
-        
+
         if type(new_player_name) == list:
-            new_player_name = ' '.join(new_player_name).strip() 
+            new_player_name = ' '.join(new_player_name).strip()
         if type(replacing_name) == list:
-            replacing_name = ' '.join(replacing_name).strip() 
+            replacing_name = ' '.join(replacing_name).strip()
 
         if constants.PARSING.BASE in tokens.asDict():
             self._game.offensive_sub(new_player_name, replacing_name, pinch_runner=True, base=tokens[constants.PARSING.BASE])
@@ -105,10 +107,10 @@ class GameWrapper:
         if type(replacing_name) == dict:
             replacing_name = replacing_name.get(constants.PARSING_PLAYER.NAME, [])
         if type(new_player_name) == list:
-            new_player_name = ' '.join(new_player_name).strip() 
+            new_player_name = ' '.join(new_player_name).strip()
         if type(replacing_name) == list:
-            replacing_name = ' '.join(replacing_name).strip() 
-        
+            replacing_name = ' '.join(replacing_name).strip()
+
         position = ' '.join(tokens.get(constants.PARSING.POSITION, [])).strip() # strip space to empty string if nothing there
         self._game.defensive_sub(new_player_name, replacing_name, position)
 
@@ -146,7 +148,7 @@ class GameWrapper:
             self._game.advance_on_throw(player_name, base)
         elif constants.PARSE_ADVANCE.SINGLE in description:
             self._game.hit_single(player_name,
-                                  base, 
+                                  base,
                                   location = description.get(constants.PARSING.LOCATION),
                                   )
         elif constants.PARSE_ADVANCE.DOUBLE in description:
@@ -159,7 +161,8 @@ class GameWrapper:
             self._game.advance_on_error(player_name,
                                         base,
                                         description[constants.PARSING.POSITION],
-                                        description.get(constants.PARSING.ERROR_TYPE))
+                                        description.get(constants.PARSING.ERROR_TYPE),
+                                        constants.PARSE_ADVANCE.SACRIFICE in description)
         elif constants.PARSE_ADVANCE.FIELDERS_CHOICE in description:
             self._game.advance_on_fielders_choice(player_name, base)
         elif constants.PARSE_ADVANCE.GROUND_RULE in description:

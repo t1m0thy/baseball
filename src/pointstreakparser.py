@@ -6,6 +6,7 @@ import logging
 logger = logging.getLogger("pointstreak parser")
 
 
+
 class PointStreakParser:
     """
 
@@ -168,7 +169,7 @@ class PointStreakParser:
         stolen_base = ((pp.Word(pp.nums) + pp.Keyword("SB", caseless=True)) | pp.Keyword("stolen base", caseless=True)).setResultsName(constants.PARSE_ADVANCE.STOLEN_BASE)
         error = ((pp.Keyword("error by the") + position.setResultsName(constants.PARSING.POSITION)
                   ) | \
-                (pp.Optional(pp.Keyword("SAC", caseless=True)) + pp.Optional(pp.Word(pp.nums)) +
+                (pp.Optional(pp.Keyword("SAC", caseless=True).setResultsName(constants.PARSE_ADVANCE.SACRIFICE)) + pp.Optional(pp.Word(pp.nums)) +
                  pp.CaselessLiteral("e") +
                  pp.oneOf("1 2 3 4 5 6 7 8 9").setResultsName(constants.PARSING.POSITION) +
                  # Fielder ERror, Throwing Error, Muffed (poorly caught between fielders)
