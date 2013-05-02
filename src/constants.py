@@ -262,5 +262,6 @@ class PARSE_ADVANCE:
     DROPPED_THIRD_STRIKE = "dropped 3rd strike"
     BALK = "balk"
     EXTRA_BASES = "extra bases"
+    SACRIFICE = "sacrifice"  # when paired with error
 
 MAX_ASSIST_COUNT = 10
