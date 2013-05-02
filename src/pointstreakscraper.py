@@ -181,7 +181,7 @@ class PointStreakScraper(GameScraper):
                     home_defense_player_list.insert(0, starting_pitcher)
         return away_offense_player_list + away_defense_player_list, home_offense_player_list + home_defense_player_list
 
-    def starting_lineups(self):
+    def starting_lineups(self, away_roster=None, home_roster=None):
         """
         scrape the starting lineup from the sequential point streak XMl files
 
@@ -198,9 +198,21 @@ class PointStreakScraper(GameScraper):
 
                 for p in away_player_list:
                     if p.position not in away_lineup.position_dict() and p.name is not None:
+                        try:
+                            roster_player = away_roster.find_player_by_name(p.name)
+                            roster_player.merge(p)
+                            p = roster_player
+                        except KeyError:
+                            pass
                         away_lineup.update_player(p)
                 for p in home_player_list:
                     if p.position not in home_lineup.position_dict() and p.name is not None:
+                        try:
+                            roster_player = home_roster.find_player_by_name(p.name)
+                            roster_player.merge(p)
+                            p = roster_player
+                        except KeyError:
+                            pass
                         home_lineup.update_player(p)
 
                 try:
@@ -310,12 +322,12 @@ class PointStreakScraper(GameScraper):
             search_list = self._away_html_player_list
         try:
             bestmatch = player.find_closest_name(search_list)
-            return bestmatch.iddict.get("pointstreak"), bestmatch.game_stats
+            return bestmatch.iddict.get("pointstreak"), bestmatch.verify_bat_stats, bestmatch.verify_pitch_stats
         except:
             logger.error("Failed to find match for:\n{} \nin list:\n{}".format(player, search_list))
             raise
 
-    def _update_html_player_table(self, is_home, table):
+    def _update_html_player_table(self, is_home, batting, table):
         """
         helper method to build player lists parsed from the html pages.
         """
@@ -332,14 +344,25 @@ class PointStreakScraper(GameScraper):
                 player_name = table_values[1]
                 player_id = t.a.attrs.get("href").split('=')[1]
                 player = Player(player_name, player_num, iddict={"pointstreak": player_id})
-                player.game_stats = dict(AB=int(table_values[3]),
-                                         #R=int(table_values[4]),
-                                         #H=int(table_values[5]),
-                                         #RBI=int(table_values[6]),
-                                         #BB=int(table_values[7]),
-                                         #SO=int(table_values[8]),
-                                         #AVG=float(table_values[9])
-                                         )
+                if batting:
+                    player.verify_bat_stats = dict(AB=int(table_values[3]),
+                                             R=int(table_values[4]),
+                                             H=int(table_values[5]),
+                                             RBI=int(table_values[6]),
+                                             BB=int(table_values[7]),
+                                             SO=int(table_values[8]),
+                                             AVG=float(table_values[9])
+                                             )
+                else:
+                    player.verify_pitch_stats = dict(IP=float(table_values[2]),
+                                             H=int(table_values[3]),
+                                             R=int(table_values[4]),
+                                             ER=int(table_values[5]),
+                                             BB=int(table_values[6]),
+                                             SO=int(table_values[7]),
+                                             ERA=float(table_values[8])
+                                             )
+
                 current_list.update_player(player)
 
     def _build_html_player_tables(self):
@@ -353,14 +376,14 @@ class PointStreakScraper(GameScraper):
         batting_stats_div = divs[DIV_ID_BATTING_STATS]
         self._batting_stats_tables = batting_stats_div.find_all("table")
 
-        self._update_html_player_table(is_home=False, table=self._batting_stats_tables[0])
-        self._update_html_player_table(is_home=True, table=self._batting_stats_tables[1])
+        self._update_html_player_table(is_home=False, batting=True, table=self._batting_stats_tables[0])
+        self._update_html_player_table(is_home=True, batting=True, table=self._batting_stats_tables[1])
 
         pitching_stats_div = divs[DIV_ID_PITCHING_STATS]
         self._pitching_stats_tables = pitching_stats_div.find_all("table")
 
-        self._update_html_player_table(is_home=False, table=self._pitching_stats_tables[0])
-        self._update_html_player_table(is_home=True, table=self._pitching_stats_tables[1])
+        self._update_html_player_table(is_home=False, batting=False, table=self._pitching_stats_tables[0])
+        self._update_html_player_table(is_home=True, batting=False, table=self._pitching_stats_tables[1])
 
     def _player_url_from_id(self, player_id):
         return PS_PLAYER_URL % player_id
@@ -374,8 +397,9 @@ class PointStreakScraper(GameScraper):
         for player in player_list:
             player_id = None
             try:
-                player_id, game_stats = self.get_player_id_and_stats(is_home, player)
-                player.game_stats.update(game_stats)
+                player_id, verify_bat_stats, verify_pitch_stats = self.get_player_id_and_stats(is_home, player)
+                player.verify_bat_stats.update(verify_bat_stats)
+                player.verify_pitch_stats.update(verify_pitch_stats)
             except:
                 logger.exception("unable to find id for player {}".format(player.name))
 
