@@ -17,7 +17,19 @@ import setuplogger
 from models.event import Event
 from workerconstants import PERSISTENT_FILE_PATH, JOBS_PATH
 
-setuplogger.setupRootLogger(os.environ.get("SB_LOGLEVEL", "warn"))
+#===============================================================================
+# PARSE COMMAND LINE ARGS
+#===============================================================================
+import argparse
+parser = argparse.ArgumentParser("The Small Ball Stats Muncher")
+loghelp = """log level: one of 'all', 'debug', 'info', 'warn', 'error', 'critical'.
+                Default is 'warn'"""
+parser.add_argument('-l', '--log', action="store", default="warn", help=loghelp)
+parser.add_argument('-n', '--no_remote', action="store_true", default=False, help="don't apply changes to remote mysql database")
+
+options = parser.parse_args()
+
+setuplogger.setupRootLogger(os.environ.get("SB_LOGLEVEL", options.log))
 logger = logging.getLogger("main")
 
 # this is a hack to get dotcloud print outpout into logs
@@ -38,7 +50,7 @@ def main():
     f.write("opened file at {}\n".format(time.asctime()))
     f.close()
 
-    session = manager.init_database(use_mysql=True)
+    session = manager.init_database(use_mysql=not options.no_remote)
 
     while True:
         if os.path.isfile(JOBS_PATH):
