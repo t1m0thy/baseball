@@ -16,6 +16,7 @@ class Name(str):
             if ',' in name:
                 last, first = name.split(',', 1)
                 name = first.strip() + ' ' + last.strip()
+            name = " ".join([word.capitalize() for word in name.split(" ")])
         except AttributeError:
             pass
         self._id = None
@@ -29,7 +30,7 @@ class Name(str):
                 first, last = self.split(" ", 1)
                 return last.replace(" ", "")[:4].lower() + first[0].lower()
             except ValueError:
-                self.replace(" ", "")[:5].lower()
+                return self.replace(" ", "")[:5].lower()
 
     def set_id(self, _id):
         self._id = _id
@@ -52,14 +53,14 @@ class Name(str):
         if len(splitname) == 2:
             return splitname[0]
         else:
-            return None
+            return ""
 
     def last(self):
         splitname = self.split(' ', 1)
         if len(splitname) == 2:
             return splitname[1]
         else:
-            return splitname
+            return splitname[0]
 
 
 class Player:
@@ -106,8 +107,11 @@ class Player:
         self.iddict = iddict
         self.team_id = team_id
 
-        self.atbats = 0
-        self.game_stats = {}
+        self.plate_appearances = 0
+        self.bat_stats = dict(AB=0, H=0, R=0, RBI=0, BB=0, SO=0, AVG=0)
+        self.pitch_stats = dict(IP=0, H=0, R=0, ER=0, BB=0, SO=0, ERA=0)
+        self.verify_bat_stats = {}
+        self.verify_pitch_stats = {}
 
         #TODO: add throwing hand vs. batting hand
         #TODO: add switch_hitter flag
@@ -158,11 +162,26 @@ class Player:
         """ Any attributes of player that are not None will overwrite the value of this current player.
         iddict is updates with data from player as well """
         #TODO: make these special attributes special with decorators or something...
-        for attr in ["name", "number", "order", "position", "bat_hand", "throw_hand"]:
-            if other.__dict__[attr] is not None:
+        for attr in ["name",
+                     "number",
+                     "order",
+                     "position",
+                     "bat_hand",
+                     "throw_hand",
+                     "birthday",
+                     "college_year",
+                     "college_name",
+                     "draft_status",
+                     "height",
+                     "weight",
+                     "team_id"]:
+            if other.__dict__.get(attr) is not None:
                 self.__dict__[attr] = other.__dict__[attr]
         self.iddict.update(other.iddict)
-        self.game_stats.update(other.game_stats)
+        self.verify_pitch_stats.update(other.verify_pitch_stats)
+        self.verify_bat_stats.update(other.verify_bat_stats)
+        self.pitch_stats.update(other.pitch_stats)
+        self.bat_stats.update(other.bat_stats)
 
     def diff(self, other):
         """return dictionary of any values that differ with other player.
@@ -204,11 +223,11 @@ class Player:
 #        return points
 
     def find_closest_name(self, player_list):
-        other_names = [other.name for other in player_list]
-        matches = difflib.get_close_matches(self.name, other_names, n=1, cutoff=0.6)
+        other_names = [other.name.lower() for other in player_list]
+        matches = difflib.get_close_matches(self.name.lower(), other_names, n=1, cutoff=0.6)
         winner_count = len(matches)
         if winner_count == 0:
-            matches = difflib.get_close_matches(self.name.split()[-1], other_names, n=1, cutoff=0.6)
+            matches = difflib.get_close_matches(self.name.split()[-1].lower(), other_names, n=1, cutoff=0.6)
             winner_count = len(matches)
 
         if winner_count == 1:
