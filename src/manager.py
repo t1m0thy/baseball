@@ -16,6 +16,8 @@ from models import event
 from models import playerinfo
 from models import gameinfomodel
 
+CHECKED_PLAYERS = {}
+
 
 def find_new_player_id(session, base_name):
     index = 1
@@ -39,26 +41,40 @@ def import_game(gameid, cache_path=None, game=None, session=None):
     #=======================================================================
     # Parse starting lineups and game rosters (any player to appear at all)
     #=======================================================================
-    away_starting_lineup, home_starting_lineup = scraper.starting_lineups()
-    game_info.set_starting_players(away_starting_lineup, home_starting_lineup)
 
     # pass in starting lineups so the rosters include those player objects
-    away_roster, home_roster = scraper.game_rosters(away_starting_lineup, home_starting_lineup)
+    away_roster, home_roster = scraper.game_rosters()
+
+    away_starting_lineup, home_starting_lineup = scraper.starting_lineups(away_roster, home_roster)
+    game_info.set_starting_players(away_starting_lineup, home_starting_lineup)
 
     # sync up with the player database.
     if session is not None:
         for player in away_roster + home_roster:
-            player_models = session.query(PlayerInfo).filter_by(FIRST_NAME=player.name.first(), LAST_NAME=player.name.last(), TEAM_ID=player.team_id)
-            if player_models.count() < 1:
-                sbs_id = find_new_player_id(session, player.name.id())
-                player.name.set_id(sbs_id)
-                session.add(player.to_model())
-            elif player_models.count() > 1:
-                logger.warning("More than one player found for name: {} {}".format(player.name.first(), player.name.last()))
-            elif player_models.count() == 1:
-                player.name.set_id(player_models[0].SBS_ID)
-                m = player.to_model(player_models[0])  # update existing model
-                session.merge(m)
+            logger.info("Checking DB for Player {}".format(player.name))
+            try:
+                cached = (player.name.first(), player.name.last(), player.team_id) in CHECKED_PLAYERS
+            except TypeError:
+                logger.warning("Could not cache {}".format((player.name.first(), player.name.last(), player.team_id)))
+                cached = False
+            if cached:
+                player.name.set_id(CHECKED_PLAYERS[(player.name.first(), player.name.last(), player.team_id)])
+            else:
+                player_models = session.query(PlayerInfo).filter_by(FIRST_NAME=player.name.first(), LAST_NAME=player.name.last(), TEAM_ID=player.team_id)
+                if player_models.count() < 1:
+                    sbs_id = find_new_player_id(session, player.name.id())
+                    player.name.set_id(sbs_id)
+                    session.add(player.to_model())
+                    logger.info("Add {} to DB".format(player.name))
+                elif player_models.count() > 1:
+                    logger.warning("More than one player found for name: {} {}".format(player.name.first(), player.name.last()))
+                    player.name.set_id(player_models[0].SBS_ID)
+                elif player_models.count() == 1:
+                    player.name.set_id(player_models[0].SBS_ID)
+                    #m = player.to_model(player_models[0])  # update existing model
+                    #session.merge(m)
+                CHECKED_PLAYERS[(player.name.first(), player.name.last(), player.team_id)] = player.name.id()
+
         game_info_query = session.query(gameinfomodel.GameInfoModel).filter_by(GAME_ID=gameid)
         if game_info_query.count() < 1:
             session.add(game_info.as_model())
@@ -111,9 +127,10 @@ def import_game(gameid, cache_path=None, game=None, session=None):
                 raise  # StandardError("Error with event: {}".format(raw_event.text()))
     game.set_previous_event_as_game_end()
 
-    # for p in game.home_roster + game.away_roster:
-    #     if p and p.atbats != p.game_stats.get("AB", 0):
-    #         logger.error(" counted AB {} does not equal reported AB {} for player {}".format(p.atbats, p.game_stats.get("AB", 0), p.name))
+    for p in game.home_roster + game.away_roster:
+        for stat in ["AB", "R", "H", "RBI", "BB", "SO"]:
+            if p.bat_stats.get(stat, 0) != p.verify_bat_stats.get(stat, 0):
+                logger.error(" counted {} {} does not equal reported {} {} for player {}".format(stat, p.bat_stats.get(stat, 0), stat, p.verify_bat_stats.get(stat, 0), p.name))
 
     if session is not None:
         for e in game.events():
