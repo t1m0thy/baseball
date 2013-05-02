@@ -49,11 +49,11 @@ class GameWrapper:
         player_name = tokens[constants.PARSING.PLAYER][constants.PARSING_PLAYER.NAME]
         if type(player_name) == list:
             player_name = ' '.join(player_name)
-        #print "PUTOUT", player_name
         description = tokens[constants.PARSING.DESCRIPTION]
+        logger.info("PUT OUT {}".format(description.asDict()))
         position = description.get(constants.PARSING.POSITION)
-        logger.info(text)
         if constants.PARSING_OUTS.FLY_OUT in description:
+            logger.info("Fly Out {}".format(description))
             self._game.out_fly_out(player_name,
                                    position,
                                    constants.PARSING_OUTS.SACRIFICE in description)

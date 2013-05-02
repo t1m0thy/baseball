@@ -119,8 +119,10 @@ class PointStreakParser:
                    pp.Optional(pp.Keyword("in foul territory", caseless=True).setResultsName(constants.PARSING_OUTS.FOUL))
                    ).setResultsName(constants.PARSING_OUTS.FLY_OUT)
 
-        sacrifice_fly = (pp.Keyword("sacrifice fly to", caseless=True).setResultsName(constants.PARSING_OUTS.SACRIFICE)
-                         + position.setResultsName(constants.PARSING.POSITION)).setResultsName(constants.PARSING_OUTS.FLY_OUT)
+        sacrifice_fly = (pp.Keyword("sacrifice fly to", caseless=True).setResultsName(constants.PARSING_OUTS.SACRIFICE) +
+                         position.setResultsName(constants.PARSING.POSITION)).setResultsName(constants.PARSING_OUTS.FLY_OUT)
+        sac_fly_abbreviated = (pp.Keyword("SF").setResultsName(constants.PARSING_OUTS.SACRIFICE) +
+                               pp.Word(pp.nums).setResultsName(constants.PARSING.POSITION)).setResultsName(constants.PARSING_OUTS.FLY_OUT)
         possibles = double_play | triple_play | \
                     picked_off | \
                     sacrifice_hit | \
@@ -131,6 +133,7 @@ class PointStreakParser:
                     strike_out | \
                     fly_out | \
                     sacrifice_fly | \
+                    sac_fly_abbreviated | \
                     line_drive | \
                     popup
 
