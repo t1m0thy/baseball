@@ -1,3 +1,5 @@
+import os
+
 import logging
 logger = logging.getLogger("manager")
 
@@ -84,8 +86,11 @@ def import_game(gameid, cache_path=None, game=None, session=None):
 
     if game is None:
         game = gamestate.GameState()
-    game.home_team_id = scraper.home_team()
-    game.visiting_team = scraper.away_team()
+    home = scraper.home_team()
+    away = scraper.away_team()
+
+    game.home_team_id = home
+    game.visiting_team = away
     game.game_id = gameid
 
     game.set_away_lineup(away_starting_lineup)
@@ -148,10 +153,10 @@ def init_database(use_mysql=False, dbname="sbs"):
     #engine = create_engine('sqlite:///:memory:', echo=False)
     # "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}"
     if use_mysql:
-        db_setup = dict(user="root",  # os.environ.get('DOTCLOUD_DATA_MYSQL_LOGIN')
-                        password="BupRihFav!5",  # os.environ.get('DOTCLOUD_DATA_MYSQL_PASSWORD')
+        db_setup = dict(user=os.environ.get('MYSQL_LOGIN'),
+                        password=os.environ.get('MYSQL_PASSWORD'),
                         host="127.0.0.1",
-                        port=3307,
+                        port=os.environ.get('MYSQL_PORT', 3006),
                         dbname=dbname
                         )
         mysql_setup = "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}".format(**db_setup)
