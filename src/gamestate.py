@@ -1317,14 +1317,15 @@ class GameState:
 
         try:
             credit_batter = self.batting_lineup.find_player_by_number(batter_number)
+            if batter_number != current_batter.number:
+                logger.error("Advance recorded from batter number {} {} that is not current batter {}".format(batter_number,
+                             credit_batter.name,
+                             self.batter))
         except KeyError:
             credit_batter = None
             logger.error("Attempt to credit batter number that's not in lineup: {}".format(batter_number))
 
-        if batter_number != current_batter.number:
-            logger.error("Advance recorded from batter number {} {} that is not current batter {}".format(batter_number,
-                         credit_batter.name,
-                         self.batter))
+
 
         self._advance_player(player_name, base, credit_batter=credit_batter)
 
