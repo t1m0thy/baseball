@@ -792,7 +792,7 @@ class GameState:
                 self.inning += 1
             self.set_event_value(self.event_list[-1], "end_of_half_inning_flag", True)
         else:
-            self.inning = 1 # beginning of game
+            self.inning = 1  # beginning of game
         self._next_batter_leadoff = True
 
         #self._update_lineups_and_fielders()
@@ -1049,7 +1049,7 @@ class GameState:
         fielder_position = self.lookup_position_num(fielder_position)
         self._credit_fielders_with_out(player_name, [fielder_position])
         self._out(self.batter)
-        self.event_text += str(fielder_position) + "/F" # TODO: KEEP GOING ON THE EVENT_STRING
+        self.event_text += str(fielder_position) + "/F"  # TODO: KEEP GOING ON THE EVENT_STRING
 
         self._set_event_type(constants.EVENT_CODE.GENERIC_OUT, player_name)
         logger.debug("{} flies out to {}. sac = {}".format(player_name, fielder_position, sacrifice))
@@ -1325,8 +1325,6 @@ class GameState:
             credit_batter = None
             logger.error("Attempt to credit batter number that's not in lineup: {}".format(batter_number))
 
-
-
         self._advance_player(player_name, base, credit_batter=credit_batter)
 
     def advance_on_interference(self, player_name, position=None):
@@ -1431,7 +1429,6 @@ class GameState:
         else:
             self.visitor_score += 1
         logger.debug("Score now Home %s, Vis %s" % (self.home_score, self.visitor_score))
-
 
     #------------------------------------------------------------------------------
     # SUBSTITUTIONS
