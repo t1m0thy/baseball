@@ -1,24 +1,26 @@
 import yaml
 import os
 
-TODO = "TODO"
+TODO = "todo"
 DONE = "> done"
 ERROR = "x error"
-DELETE = "DELETE"
+DELETE = "delete"
+
 
 class JobManager:
     """
     maintains a list of jobs in a yaml file
-    jobs have job_type either of any string
-    recommended job_types are constants of this module
 
-    jobs are organized group ie. "pointstreak"
+    jobs have a job_type, which is any string
+    recommended job_types are constants in this module (TODO, DONE, ERROR, DELETE)
+
+    jobs are organized by group, which is any hashable variable.  ie. "fred"
     """
 
     def __init__(self, filepath):
         self._filepath = filepath
         if os.path.isfile(self._filepath):
-            self._jobs = yaml.load(open(self._filepath,'r'))
+            self._jobs = yaml.load(open(self._filepath, 'r'))
         else:
             self._jobs = {}
 
@@ -74,5 +76,5 @@ class JobManager:
         del(self._jobs[job_group])
 
     def save(self):
-        with open(self._filepath,'w') as f:
+        with open(self._filepath, 'w') as f:
             yaml.dump(self._jobs, f, default_flow_style=False)

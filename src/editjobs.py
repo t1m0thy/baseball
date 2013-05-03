@@ -1,23 +1,31 @@
 #!/usr/bin/env python
-import sys, os
-import argparse
+"""
+editjobs.py
 
-sys.path.append("/home/dotcloud/current/smallball")
+A command line tool to manage games to parse.  games can be added by
+season or individually.  See command line help (-h) for usage instructions.
+
+results will end up in a yaml jobs file.  This yaml file will be read
+by grabber.py that also also updates that file to report progress.
+
+#TODO: add some code to easily check jobs have been completed.
+
+"""
+
+import os
+import argparse
+import logging
 
 import jobmanager
-import setuplogger, logging
+import setuplogger
 import pointstreakscraper as pss
+from workerconstants import JOBS_PATH, PERSISTENT_FILE_PATH
 
 setuplogger.setupRootLogger(os.environ.get("SB_LOGLEVEL", "warn"))
 logger = logging.getLogger("editjobs")
 
-from workerconstants import JOBS_PATH, PERSISTENT_FILE_PATH
-
-# this is a hack to get dotcloud print outpout into logs
-sys.stdout = sys.stderr
-
-jm = jobmanager.JobManager(JOBS_PATH) 
-parser = argparse.ArgumentParser("The Small Ball Job Editor")
+jm = jobmanager.JobManager(JOBS_PATH)
+parser = argparse.ArgumentParser("The SBS Job Editor")
 
 parser.add_argument('--addgame', action="store", default=None, help="request to ADD one specific game ID")
 parser.add_argument('--delgame', action="store", default=None, help="request to DELETE one specific game ID")
@@ -34,22 +42,22 @@ if options.clear:
     jm.save()
     print "Cleared {} Job Group".format(options.group)
 
-if options.addgame != None:
+if options.addgame is not None:
     jm.add_job(options.addgame, job_group=options.group)
     jm.save()
     print "Adding {} game: {}".format(options.group, options.addgame)
-            
-if options.delgame!= None:
+
+if options.delgame is not None:
     jm.add_job(options.delgame, job_group=options.group, job_type=jobmanager.DELETE)
     jm.save()
     print "Deleted {} game: {}".format(options.group, options.delgame)
-    
-if options.addseason != None:
+
+if options.addseason is not None:
     idlist = pss.scrape_season_gameids(options.addseason, cache_path=PERSISTENT_FILE_PATH)
     jm.add_jobs(idlist, job_group=options.group)
     jm.save()
     print "Added {} season: {}".format(options.group, options.addseason)
-    
+
 if options.retryfailed:
     retry_list = []
     for job in jm.jobs(options.group, do_job_type=jobmanager.ERROR):
@@ -57,7 +65,7 @@ if options.retryfailed:
         jm.set_job(job, options.group, job_type=jobmanager.TODO)
     jm.save()
     print "Will retry {} games: {}".format(options.group, ' '.join(retry_list))
-    
+
 if options.retrydone:
     retry_list = []
     for job in jm.jobs(options.group, do_job_type=jobmanager.DONE):
