@@ -1,6 +1,8 @@
 import datetime
 import eventfields
 from models import gameinfomodel
+from constants import POSITION_CODES
+
 
 class GameInfo:
     def __init__(self, gameid):
@@ -29,8 +31,8 @@ class GameInfo:
         self.inputter_record_id = ""
         self.input_record_ts = ""
         self.edit_record_ts = ""
-        self.method_record_cd = 0
 
+        self.method_record_cd = 0
         self.pitches_record_cd = 0
 
         self.temp_park_ct = 0
@@ -92,6 +94,7 @@ class GameInfo:
         self.home_lineup8_fld_cd = 0
         self.home_lineup9_bat_id = ""
         self.home_lineup9_fld_cd = 0
+
         self.away_finish_pit_id = ""
         self.home_finish_pit_id = ""
 
@@ -147,6 +150,14 @@ class GameInfo:
         except KeyError:
             self.dh_fl = False
 
-        self.away_start_pit_id = away_lineup.find_player_by_position("P").name
-        self.home_start_pit_id = home_lineup.find_player_by_position("P").name
+        self.away_start_pit_id = away_lineup.find_player_by_position("P").name.id()
+        self.home_start_pit_id = home_lineup.find_player_by_position("P").name.id()
 
+        for order in range(1, 10):
+            player = away_lineup.find_player_by_order(order)
+            setattr(self, "away_lineup{}_bat_id", player.name.id())
+            setattr(self, "away_lineup{}_fld_cd", POSITION_CODES[player.position])
+
+            player = home_lineup.find_player_by_order(order)
+            setattr(self, "home_lineup{}_bat_id", player.name.id())
+            setattr(self, "home_lineup{}_fld_cd", POSITION_CODES[player.position])
