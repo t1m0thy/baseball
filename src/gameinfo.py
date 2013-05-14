@@ -115,16 +115,20 @@ class GameInfo:
             self.daynight_park_cd = 'D'
 
     def set_game_info(self, game_info):
-        start_date_time = datetime.datetime.strptime(game_info.get("Date", "") + ", " + game_info.get("Time", ""),
-                                                     "%A, %B %d %Y, %I:%M %p")
-        end_date_time = datetime.datetime.strptime(game_info.get("EndDate", "") + ", " + game_info.get("EndTime", ""),
-                                                   "%m/%d/%Y, %I:%M %p")
-
         self.away_team_id = game_info.get("VisitingTeam")
         self.home_team_id = game_info.get("HomeTeam")
 
+        start_date_time = datetime.datetime.strptime(game_info.get("Date", "") + ", " + game_info.get("Time", ""),
+                                                     "%A, %B %d %Y, %I:%M %p")
         self._set_date(start_date_time)
-        duration = end_date_time - start_date_time
+
+        try:
+            end_date_time = datetime.datetime.strptime(game_info.get("EndDate", "") + ", " + game_info.get("EndTime", ""),
+                                                       "%m/%d/%Y, %I:%M %p")
+            duration = end_date_time - start_date_time
+            self.minutes_game_ct = duration.seconds / 60
+        except ValueError:
+            pass
 
         self.park_id = game_info.get("Location")
         self.base4_ump_id = game_info.get("PlateUmp", "")
@@ -136,10 +140,9 @@ class GameInfo:
         self.lf_ump_id = game_info.get("UmpLF", "")
         self.rf_ump_id = game_info.get("UmpRF", "")
 
-        self.minutes_game_ct = duration.seconds / 60
         self.inn_ct = game_info.get("EndLastInningScored")
 
-        self.attend_park_ct = game_info.get("Attendance")
+        self.attend_park_ct = int(game_info.get("Attendance").replace(",",""))
 
     def set_starting_players(self, away_lineup, home_lineup):
         #self.game_id = self.game_id
