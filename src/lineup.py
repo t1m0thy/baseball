@@ -444,3 +444,14 @@ class Lineup(PlayerList):
             return True
         except KeyError:
             return False
+
+    def update_position(self, player):
+        """
+        if no position yet, put player in their specified position, otherwise, replace player at that position
+        """
+        try:
+            replace_player = self.find_player_by_position(player.position)
+            self.remove(replace_player)
+        except KeyError:
+            pass
+        self.add_player(player)

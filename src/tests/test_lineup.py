@@ -93,6 +93,11 @@ class TestLineup(unittest.TestCase):
         self.lineup.update_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
         self.assertEqual(self.lineup.find_player_by_position("3B").name, "Wade Boggs")
 
+    def test_update_position(self):
+        self.lineup.add_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
+        self.lineup.update_position(Player("Big Bird", 26, 1, "3B", LEFT))
+        self.assertEqual(self.lineup.find_player_by_position("3B").name, "Big Bird")
+
     def test_update_error(self):
         self.lineup.add_player(Player("Wade Boggs", 26, 1, "P", LEFT))
         self.lineup.update_player(Player("Wade Boggs", 26, 1, "3B", LEFT))

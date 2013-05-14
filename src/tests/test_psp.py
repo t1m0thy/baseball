@@ -17,7 +17,7 @@ class TestCase(unittest.TestCase):
     def setUp(self):
         self.parser = psp.PointStreakParser()
         self.test_game_id = "109440"
-  
+
     def test_game(self):
         try:
             raw_event = None
@@ -34,7 +34,7 @@ class TestCase(unittest.TestCase):
             away_starting_lineup, home_starting_lineup = scraper.starting_lineups()
             game.set_away_lineup(away_starting_lineup)
             game.set_home_lineup(home_starting_lineup)
-            away_roster, home_roster = scraper.game_rosters()
+            away_roster, home_roster, away_starters, home_starters = scraper.game_rosters()
             game.set_away_roster(away_roster)
             game.set_home_roster(home_roster)
 
@@ -66,4 +66,3 @@ class TestCase(unittest.TestCase):
             if raw_input("show_problem_page?") == 'y':
                 webbrowser.open_new_tab(scraper.review_url())
             raise
-        

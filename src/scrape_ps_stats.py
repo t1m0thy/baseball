@@ -69,7 +69,7 @@ def scrape_hit_stats(season_id, f):
     return stats_scraper("batting", 21, season_id, f)
 
 if __name__ == "__main__":
-    season_list = [18269, 12218, 12252, 12493, 11467, 12561, 12547, 11944, 12238, 12193, 11943, 15900, 12222, 13006]
+    season_list = [18269, 12252, 12218, 12493, 11467, 12561, 12547, 11944, 12238, 12193, 11943, 15900, 12222, 13006]
 
     # Create a CSV where we'll save our data.
     f = open('pshitstats.csv', 'w')

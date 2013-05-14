@@ -114,14 +114,14 @@ class PointStreakScraper(GameScraper):
     def game_rosters(self, base_away_players=None, base_home_players=None):
         """ return full list of all players in the game """
         away = self.root.find(".//{*}VisitingTeam")
-        away_offense = [dict(e.items()) for e in away.find(".//{*}Offense").getchildren()]
-        away_replaced = [dict(e.items()) for e in away.find(".//{*}ReplacedOffense").getchildren()]
-        away_pitchers = [dict(e.items() + [("Position", "P")]) for e in away.find(".//{*}Pitchers").getchildren()]
+        away_offense_d = [dict(e.items()) for e in away.find(".//{*}Offense").getchildren()]
+        away_replaced_d = [dict(e.items()) for e in away.find(".//{*}ReplacedOffense").getchildren()]
+        away_pitchers_d = [dict(e.items() + [("Position", "P")]) for e in away.find(".//{*}Pitchers").getchildren()]
 
         home = self.root.find(".//{*}HomeTeam")
-        home_offense = [dict(e.items()) for e in home.find(".//{*}Offense").getchildren()]
-        home_replaced = [dict(e.items()) for e in home.find(".//{*}ReplacedOffense").getchildren()]
-        home_pitchers = [dict(e.items() + [("Position", "P")]) for e in home.find(".//{*}Pitchers").getchildren()]
+        home_offense_d = [dict(e.items()) for e in home.find(".//{*}Offense").getchildren()]
+        home_replaced_d = [dict(e.items()) for e in home.find(".//{*}ReplacedOffense").getchildren()]
+        home_pitchers_d = [dict(e.items() + [("Position", "P")]) for e in home.find(".//{*}Pitchers").getchildren()]
 
         if base_away_players is None:
             away_roster = PlayerList()
@@ -133,109 +133,126 @@ class PointStreakScraper(GameScraper):
         else:
             home_roster = base_home_players
 
-        away_roster.update_players(self._make_players(player_dict_list=away_offense + away_replaced + away_pitchers, team_id=self.away_team()))
-        home_roster.update_players(self._make_players(player_dict_list=home_offense + home_replaced + home_pitchers, team_id=self.home_team()))
+        away_pitchers = self._make_players(player_dict_list=away_pitchers_d, team_id=self.away_team())
+        away_offense = self._make_players(player_dict_list=away_offense_d + away_replaced_d, team_id=self.away_team())
+        away_roster.update_players(away_offense + away_pitchers)
+
+        away_starters = Lineup()
+        away_starters.add_player(away_pitchers[0])
+        for p in away_offense:
+            if p.position is not None:
+                away_starters.update_position(p)
+
+        home_pitchers = self._make_players(player_dict_list=home_pitchers_d, team_id=self.home_team())
+        home_offense = self._make_players(player_dict_list=home_offense_d + home_replaced_d, team_id=self.home_team())
+        home_roster.update_players(home_offense + home_pitchers)
+
+        home_starters = Lineup()
+        home_starters.add_player(home_pitchers[0])
+        for p in home_offense:
+            if p.position is not None:
+                home_starters.update_position(p)
 
         self._complete_player_profile(False, away_roster)
         self._complete_player_profile(True, home_roster)
-        return away_roster, home_roster
+        return away_roster, home_roster, away_starters, home_starters
 
-    def scrape_lineup_from_seq_xml(self, seq):
-        """
-        helper method for starting_lineupa method.
-        given a sequence number, grabs the xml file, and pulls out the lineups from it
-        """
-        xml = self._get_pointstreak_xml(seq)
-        root = lxml.etree.fromstring(xml)
-        away = root.find(".//{*}VisitingTeam")
-        away_offense = [dict(e.items()) for e in away.find(".//{*}Offense").getchildren()]
-        away_defense = [dict(e.items()) for e in away.find(".//{*}Defense").getchildren()]
-        away_pitchers = [dict(e.items()) for e in away.find(".//{*}Pitchers").getchildren()]
-        home = root.find(".//{*}HomeTeam")
-        home_offense = [dict(e.items()) for e in home.find(".//{*}Offense").getchildren()]
-        home_defense = [dict(e.items()) for e in home.find(".//{*}Defense").getchildren()]
-        home_pitchers = [dict(e.items()) for e in home.find(".//{*}Pitchers").getchildren()]
+    # def scrape_lineup_from_seq_xml(self, seq):
+    #     """
+    #     helper method for starting_lineupa method.
+    #     given a sequence number, grabs the xml file, and pulls out the lineups from it
+    #     """
+    #     xml = self._get_pointstreak_xml(seq)
+    #     root = lxml.etree.fromstring(xml)
+    #     away = root.find(".//{*}VisitingTeam")
+    #     away_offense = [dict(e.items()) for e in away.find(".//{*}Offense").getchildren()]
+    #     away_defense = [dict(e.items()) for e in away.find(".//{*}Defense").getchildren()]
+    #     away_pitchers = [dict(e.items()) for e in away.find(".//{*}Pitchers").getchildren()]
+    #     home = root.find(".//{*}HomeTeam")
+    #     home_offense = [dict(e.items()) for e in home.find(".//{*}Offense").getchildren()]
+    #     home_defense = [dict(e.items()) for e in home.find(".//{*}Defense").getchildren()]
+    #     home_pitchers = [dict(e.items()) for e in home.find(".//{*}Pitchers").getchildren()]
 
-        away_offense_player_list = self._make_players(player_dict_list=away_offense)
-        away_defense_player_list = self._make_players(player_dict_list=away_defense)
+    #     away_offense_player_list = self._make_players(player_dict_list=away_offense)
+    #     away_defense_player_list = self._make_players(player_dict_list=away_defense)
 
-        if away_pitchers:
-            starting_pitcher = self._make_pitcher(player_dict=away_pitchers[0])
-            if starting_pitcher is not None:
-                try:
-                    away_defense_player_list.find_player_by_name(starting_pitcher.name)
-                    away_defense_player_list.update_player(starting_pitcher)
-                except KeyError:
-                    away_defense_player_list.insert(0, starting_pitcher)
+    #     if away_pitchers:
+    #         starting_pitcher = self._make_pitcher(player_dict=away_pitchers[0])
+    #         if starting_pitcher is not None:
+    #             try:
+    #                 away_defense_player_list.find_player_by_name(starting_pitcher.name)
+    #                 away_defense_player_list.update_player(starting_pitcher)
+    #             except KeyError:
+    #                 away_defense_player_list.insert(0, starting_pitcher)
 
-        home_offense_player_list = self._make_players(player_dict_list=home_offense)
-        home_defense_player_list = self._make_players(player_dict_list=home_defense)
+    #     home_offense_player_list = self._make_players(player_dict_list=home_offense)
+    #     home_defense_player_list = self._make_players(player_dict_list=home_defense)
 
-        if home_pitchers:
-            starting_pitcher = self._make_pitcher(player_dict=home_pitchers[0])
-            if starting_pitcher is not None:
-                try:
-                    home_defense_player_list.find_player_by_name(starting_pitcher.name)
-                    home_defense_player_list.update_player(starting_pitcher)
-                except KeyError:
-                    home_defense_player_list.insert(0, starting_pitcher)
-        return away_offense_player_list + away_defense_player_list, home_offense_player_list + home_defense_player_list
+    #     if home_pitchers:
+    #         starting_pitcher = self._make_pitcher(player_dict=home_pitchers[0])
+    #         if starting_pitcher is not None:
+    #             try:
+    #                 home_defense_player_list.find_player_by_name(starting_pitcher.name)
+    #                 home_defense_player_list.update_player(starting_pitcher)
+    #             except KeyError:
+    #                 home_defense_player_list.insert(0, starting_pitcher)
+    #     return away_offense_player_list + away_defense_player_list, home_offense_player_list + home_defense_player_list
 
-    def starting_lineups(self, away_roster=None, home_roster=None):
-        """
-        scrape the starting lineup from the sequential point streak XMl files
+    # def starting_lineups(self, away_roster=None, home_roster=None):
+    #     """
+    #     scrape the starting lineup from the sequential point streak XMl files
 
-        loop through the xml files until a complete lineup for both teams has been established
-        """
-        complete = False
-        seq = 1
-        away_lineup = Lineup()
-        home_lineup = Lineup()
+    #     loop through the xml files until a complete lineup for both teams has been established
+    #     """
+    #     complete = False
+    #     seq = 1
+    #     away_lineup = Lineup()
+    #     home_lineup = Lineup()
 
-        while not complete:
-            try:
-                away_player_list, home_player_list = self.scrape_lineup_from_seq_xml(seq)
+    #     while not complete:
+    #         try:
+    #             away_player_list, home_player_list = self.scrape_lineup_from_seq_xml(seq)
 
-                for p in away_player_list:
-                    if p.position not in away_lineup.position_dict() and p.name is not None:
-                        try:
-                            roster_player = away_roster.find_player_by_name(p.name)
-                            roster_player.merge(p)
-                            p = roster_player
-                        except KeyError:
-                            pass
-                        away_lineup.update_player(p)
-                for p in home_player_list:
-                    if p.position not in home_lineup.position_dict() and p.name is not None:
-                        try:
-                            roster_player = home_roster.find_player_by_name(p.name)
-                            roster_player.merge(p)
-                            p = roster_player
-                        except KeyError:
-                            pass
-                        home_lineup.update_player(p)
+    #             for p in away_player_list:
+    #                 if p.position not in away_lineup.position_dict() and p.name is not None:
+    #                     try:
+    #                         roster_player = away_roster.find_player_by_name(p.name)
+    #                         roster_player.merge(p)
+    #                         p = roster_player
+    #                     except KeyError:
+    #                         pass
+    #                     away_lineup.update_player(p)
+    #             for p in home_player_list:
+    #                 if p.position not in home_lineup.position_dict() and p.name is not None:
+    #                     try:
+    #                         roster_player = home_roster.find_player_by_name(p.name)
+    #                         roster_player.merge(p)
+    #                         p = roster_player
+    #                     except KeyError:
+    #                         pass
+    #                     home_lineup.update_player(p)
 
-                try:
-                    complete = home_lineup.is_complete(raise_reason=False)
-                except LineupError, e:
-                    logging.error(str(e) + "\nHome \n" + str(home_lineup))
+    #             try:
+    #                 complete = home_lineup.is_complete(raise_reason=False)
+    #             except LineupError, e:
+    #                 logging.error(str(e) + "\nHome \n" + str(home_lineup))
 
-                try:
-                    complete &= away_lineup.is_complete(raise_reason=False)
-                except LineupError, e:
-                    logging.error(str(e) + "\nAway \n" + str(away_lineup))
+    #             try:
+    #                 complete &= away_lineup.is_complete(raise_reason=False)
+    #             except LineupError, e:
+    #                 logging.error(str(e) + "\nAway \n" + str(away_lineup))
 
-            except lxml.etree.XMLSyntaxError:
-                logger.error("Error parsing lineup from game %s seq %s" % (self.gameid, seq))
-            seq += 1
-            if seq > MAX_EVENTS_COUNT:
-                # check each lineup for completeness, raising the reason for incomplete
-                home_lineup.is_complete(raise_reason=True)
-                away_lineup.is_complete(raise_reason=True)
+    #         except lxml.etree.XMLSyntaxError:
+    #             logger.error("Error parsing lineup from game %s seq %s" % (self.gameid, seq))
+    #         seq += 1
+    #         if seq > MAX_EVENTS_COUNT:
+    #             # check each lineup for completeness, raising the reason for incomplete
+    #             home_lineup.is_complete(raise_reason=True)
+    #             away_lineup.is_complete(raise_reason=True)
 
-        self._complete_player_profile(False, away_lineup)
-        self._complete_player_profile(True, home_lineup)
-        return away_lineup, home_lineup
+    #     self._complete_player_profile(False, away_lineup)
+    #     self._complete_player_profile(True, home_lineup)
+    #     return away_lineup, home_lineup
 
     def get_player_info(self, player_id):
         html = self._player_page_from_id(player_id)
