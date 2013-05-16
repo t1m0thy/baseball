@@ -45,7 +45,10 @@ class GameWrapper:
     def foul(self,  text, location, tokens):
         self._game.pitch_foul()
 
-    def put_out(self, text, location, tokens):
+    def put_out(self, text="", location=None, tokens={}):
+        logger.info("Rxed put out text :" + text + ".")
+        if text == '':
+            return
         player_name = tokens[constants.PARSING.PLAYER][constants.PARSING_PLAYER.NAME]
         if type(player_name) == list:
             player_name = ' '.join(player_name)
@@ -63,6 +66,7 @@ class GameWrapper:
         elif constants.PARSING_OUTS.DROPPED_THIRD in description:
             self._game.out_dropped_third_strike(player_name)
         elif constants.PARSING_OUTS.CAUGHT_STEALING in description:
+            logger.info("Caught stealing")
             self._game.out_caught_stealing(player_name, description.get(constants.PARSING_OUTS.THROWN_OUT),
                                            constants.PARSING_OUTS.DOUBLE_PLAY in description)
         elif constants.PARSING_OUTS.UNASSISTED in description or constants.PARSING_OUTS.LINE_DRIVE in description:
