@@ -105,8 +105,12 @@ class GameWrapper:
         else:
             self._game.offensive_sub(new_player_name, replacing_name)
 
+    def parse_pitching_sub(self, text, location, tokens):
+        tokens[constants.PARSING.POSITION] = 'P'
+        self.parse_defensive_sub(text, location, tokens)
+
     def parse_defensive_sub(self, text, location, tokens):
-        new_player_name = tokens.get(constants.PARSING.NEW_PLAYER,{}).get(constants.PARSING_PLAYER.NAME, [])
+        new_player_name = tokens.get(constants.PARSING.NEW_PLAYER, {}).get(constants.PARSING_PLAYER.NAME, [])
         replacing_name = tokens.get(constants.PARSING.REPLACING, [])
         if type(replacing_name) == dict:
             replacing_name = replacing_name.get(constants.PARSING_PLAYER.NAME, [])
@@ -115,7 +119,7 @@ class GameWrapper:
         if type(replacing_name) == list:
             replacing_name = ' '.join(replacing_name).strip()
 
-        position = ' '.join(tokens.get(constants.PARSING.POSITION, [])).strip() # strip space to empty string if nothing there
+        position = ' '.join(tokens.get(constants.PARSING.POSITION, [])).strip()  # strip space to empty string if nothing there
         self._game.defensive_sub(new_player_name, replacing_name, position)
 
     def parse_advance(self, text, location, tokens):
