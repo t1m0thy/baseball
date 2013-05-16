@@ -45,11 +45,9 @@ def import_game(gameid, cache_path=None, game=None, session=None):
     #=======================================================================
 
     # pass in starting lineups so the rosters include those player objects
-    away_roster, home_roster, away_starting_lineup, home_starting_lineup = scraper.game_rosters()
-
-    #away_starting_lineup, home_starting_lineup = scraper.starting_lineups(away_roster, home_roster)
+    away_roster, home_roster = scraper.game_rosters()
+    away_starting_lineup, home_starting_lineup = scraper.starting_lineups(away_roster, home_roster)
     game_info.set_starting_players(away_starting_lineup, home_starting_lineup)
-
 
     # sync up with the player database.
     if session is not None:
