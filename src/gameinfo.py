@@ -142,7 +142,10 @@ class GameInfo:
 
         self.inn_ct = game_info.get("EndLastInningScored")
 
-        self.attend_park_ct = int(game_info.get("Attendance").replace(",",""))
+        try:
+            self.attend_park_ct = int(game_info.get("Attendance").replace(",",""))
+        except AttributeError:
+            self.attend_park_ct = -1
 
     def set_starting_players(self, away_lineup, home_lineup):
         #self.game_id = self.game_id
