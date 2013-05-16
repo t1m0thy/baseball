@@ -215,29 +215,23 @@ class PointStreakScraper(GameScraper):
                 pass
             home_lineup.update_player(p)
 
-        try:
-            if not home_lineup.is_complete(raise_reason=False):
-                options = home_lineup.find_complete_positions()
-                if len(options) == 1:
-                    for player, position in zip(home_lineup, options[0]):
-                        player.position = position
-                else:
-                    s = "\n".join([p.name + " " + str(p.all_positions) for p in home_lineup])
-                    raise Exception("Can not determine complete fielding lineup from \n" + s)
-        except LineupError, e:
-            logging.error(str(e) + "\nHome \n" + str(home_lineup))
-
-        try:
-            if not away_lineup.is_complete(raise_reason=False):
-                options = away_lineup.find_complete_positions()
-                if len(options) == 1:
-                    for player, position in zip(away_lineup, options[0]):
-                        player.position = position
-                else:
-                    s = "\n".join([p.name + " " + str(p.all_positions) for p in away_lineup])
-                    raise Exception("Can not determine complete fielding lineup from \n" + s)
-        except LineupError, e:
-            logging.error(str(e) + "\nAway \n" + str(away_lineup))
+        for lineup, which_lineup in [(home_lineup, "Home"), (away_lineup, "Away")]:
+            try:
+                if not lineup.is_complete(raise_reason=False):
+                    options = lineup.find_complete_positions()
+                    if len(options) == 1:
+                        for player, position in zip(lineup, options[0]):
+                            if player.position != position:
+                                d = {"name": player.name,
+                                     "to_p": position,
+                                     "from_p": player.position}
+                                logger.warning("Automatically Moving {name} to position {to_p} from position {from_p}".format(**d))
+                                player.position = position
+                    else:
+                        s = "\n".join([p.name + " " + str(p.all_positions) for p in lineup])
+                        raise StandardError("Can not determine complete fielding lineup from \n" + s)
+            except LineupError, e:
+                logging.error(str(e) + "\n" + which_lineup + "\n" + str(lineup))
 
         self._complete_player_profile(False, away_lineup)
         self._complete_player_profile(True, home_lineup)
