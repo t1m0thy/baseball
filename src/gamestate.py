@@ -928,10 +928,34 @@ class GameState:
         logger.info("Fielders {}".format(fielders))
         fielders = [self.lookup_position_num(pos) for pos in fielders]
         self.fielded_by = fielders[0]
-        fielder = self._current_fielding_lineup().find_player_by_position(self.lookup_position(self.fielded_by))
+        all_fielders = self._current_fielding_lineup()
+        credit_position = self.lookup_position(self.fielded_by)
+        try:
+            fielder = all_fielders.find_player_by_position(credit_position)
+            fielder_name = fielder.name
+        except KeyError:
+            # if we cant find the fielder to credit this out with.  Try to see if there is a single
+            # set of correct fielding positions based
+            options = all_fielders.find_complete_positions()
+            if len(options) == 1:
+                for player, position in zip(all_fielders, options[0]):
+                    if player.position != position:
+                        d = {"name": player.name,
+                             "to_p": position,
+                             "from_p": player.position}
+                        logger.warning("Automatically Moving {name} to position {to_p} from position {from_p}".format(**d))
+                        player.position = position
+                fielder = all_fielders.find_player_by_position(self.lookup_position(self.fielded_by))
+                fielder_name = fielder.name
+            else:
+                print options
+                print all_fielders
+                logger.error("Unable to determine the fielder to credit at position {}.  will credit a question mark '?'".format(credit_position))
+                fielder_name = "?"
+
         play_string = ''.join([str(p) for p in fielders[-2:]])
         if self.batter == player_name:
-            self.id_of_player_fielding_batted_ball = fielder.name
+            self.id_of_player_fielding_batted_ball = fielder_name
             self.play_on_batter = play_string
         elif self.runner_on_first == player_name:
             self.play_on_runner_on_first = play_string
@@ -1385,18 +1409,24 @@ class GameState:
             self.runner_on_third_destination = destination_base_name
             player_name = self.runner_on_third
 
-        advance_string = self._bases.advance(player_name, destination_base_name)
-
+        try:
+            advance_string = self._bases.advance(player_name, destination_base_name)
+            if advance_string.startswith("B"):
+                if self.batter != player_name:
+                    logger.warning("Player {} neither batter {} nor found on bases for advance to {}".format(player_name, self.batter, base))
+                    raise StandardError("Lost Player")
+            self._advancing_event_text += '.' + advance_string
+        except AssertionError:
+            d = {"name": player_name,
+                 "new_base": destination_base_name,
+                 "current_base": self._bases.get_runner_base(player_name)}
+            logger.error("Attempt to move {name} to base {new_base} when {name} is already at {current_base}".format(**d))
         #logger.warning("Advancing {} to {}.  Player can not be found at bat or on base.  base state:\n{}".format(player_name, destination_base_name, self._bases.player_locations))
 
         if self.batter == player_name:
             self.fate_of_batter = self._bases.player_fate_id(self.batter)
 
-        if advance_string.startswith("B"):
-            if self.batter != player_name:
-                logger.warning("Player {} neither batter {} nor found on bases for advance to {}".format(player_name, self.batter, base))
-                raise StandardError("Lost Player")
-        self._advancing_event_text += '.' + advance_string
+
 
         # TODO: confirm we want to use the result_pitcher here with the pitcher charged
         if base_num == 1:
@@ -1481,16 +1511,14 @@ class GameState:
                     return
                 else:
                     raise
+
+            new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
+            new_player.order = possible_remove_player.order
+            if position != '':
+                new_player.set_position(position)
             if possible_remove_player.position == position:
+                # the player being replaced is at the new position, so must be removed
                 removed_player = self._current_fielding_lineup().remove_player(replacing_name)
-                new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
-                if position != '':
-                    new_player.set_position(position)
-                new_player.order = removed_player.order
-            else:  # the player being replaced is not in the position anymore
-                new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
-                if position != '':
-                    new_player.set_position(position)
             try:
                 self._current_fielding_lineup().add_player(new_player)
                 new_player.order = possible_remove_player.order  # only update the order if this player is actually new to lineup
