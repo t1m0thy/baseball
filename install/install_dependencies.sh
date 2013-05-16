@@ -1,5 +1,5 @@
 sudo apt-get install -y lxml python-lxml libxml2-dev libxslt-dev
-sudo apt-get install -y python-numpy 
+sudo apt-get install -y python-numpy
 pip install mechanize
 pip install BeautifulSoup4
 pip install mechanize
@@ -26,3 +26,9 @@ sudo apt-get install mysql-server-5.5
 # creating database of py-gameday
 mysqladmin create gameday -u root -p
 mysql -D gameday < gameday.sql -u root -p
+
+
+############# new way ########################
+
+apt-get install libxml2-dev libxslt-dev
+
