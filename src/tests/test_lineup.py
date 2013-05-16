@@ -36,6 +36,12 @@ class TestPlayer(unittest.TestCase):
         boggs.merge(boggs2)
         self.assertEqual(boggs.number, 26)
 
+    def test_merge_keep_longer_name(self):
+        boggs = Player("Wade Boggs", 26, 1, "P", LEFT)
+        boggs2 = Player("Boggs, W", 26, 1, "P", LEFT)
+        boggs.merge(boggs2)
+        self.assertEqual(boggs.name, "Wade Boggs")
+
     def test_name_equals(self):
         boggs = Player("Wade Boggs", 26, 1, "P", LEFT)
         self.assertEquals(boggs.name, "wade boggs ")
@@ -95,8 +101,9 @@ class TestLineup(unittest.TestCase):
 
     def test_update_position(self):
         self.lineup.add_player(Player("Wade Boggs", 26, 1, "3B", LEFT))
-        self.lineup.update_position(Player("Big Bird", 26, 1, "3B", LEFT))
+        self.lineup.update_position(Player("Big Bird", 26, None, "3B", LEFT))
         self.assertEqual(self.lineup.find_player_by_position("3B").name, "Big Bird")
+        self.assertEqual(self.lineup.find_player_by_order(1).name, "Big Bird")
 
     def test_update_error(self):
         self.lineup.add_player(Player("Wade Boggs", 26, 1, "P", LEFT))
@@ -133,8 +140,12 @@ class TestCaseComplete(unittest.TestCase):
     def test_lookups(self):
         self.assertEqual("Marty Barret", self.lineup.find_player_by_order(8).name)
         self.assertEqual("Marty Barret", self.lineup.find_player_by_position("2B").name)
-        self.assertEqual("2B", self.lineup.find_player_by_name("Marty Barret").position)
         self.assertEqual(8, self.lineup.find_player_by_position("2B").order)
+
+    def test_name_lookup(self):
+        self.assertEqual("2B", self.lineup.find_player_by_name("Marty Barret").position)
+        self.assertEqual("2B", self.lineup.find_player_by_name("M Barret").position)
+
 
     def test_move(self):
         self.lineup.move_player("Jim Rice", "DH")
@@ -162,6 +173,10 @@ class TestCaseComplete(unittest.TestCase):
         test = Player("Boggs, W", None, None, None, None)
         result = test.find_closest_name(self.lineup)
         self.assertEqual(result, self.lineup.find_player_by_number(26))
+
+    def test_find_complete(self):
+        options = self.lineup.find_complete_positions()
+        self.assertEqual(len(options), 1)
 
 #    def test_closest_match3(self):
 #        test = Player(None, 26, None, None, None)

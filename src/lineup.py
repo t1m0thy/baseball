@@ -1,5 +1,6 @@
 from constants import POSITIONS, DH, P, POSITION_LOOKUP, LEFT, RIGHT, UNKNOWN, SWITCH
 import difflib
+import itertools
 from models import playerinfo
 
 
@@ -64,7 +65,7 @@ class Name(str):
 
 
 class Player:
-    def __init__(self, name, number=None, order=None, position=None, bat_hand='?', throw_hand='?', iddict={}, team_id=None):
+    def __init__(self, name, number=None, order=None, position=None, bat_hand='?', throw_hand='?', iddict={}, team_id=None, starter=False):
         """
         setup Player object
 
@@ -85,6 +86,10 @@ class Player:
         except TypeError:
             self.order = None
         self.position = self._verified_position(position)
+        if self.position is not None:
+            self.all_positions = [self.position]
+        else:
+            self.all_positions = []
 
         if bat_hand is None:
             bat_hand = UNKNOWN
@@ -112,6 +117,13 @@ class Player:
         self.pitch_stats = dict(IP=0, H=0, R=0, ER=0, BB=0, SO=0, ERA=0)
         self.verify_bat_stats = {}
         self.verify_pitch_stats = {}
+        self.starter = starter
+        if self.starter:
+            self.starting_position = position
+            self.starting_order = order
+        else:
+            self.starting_position = None
+            self.starting_order = None
 
         #TODO: add throwing hand vs. batting hand
         #TODO: add switch_hitter flag
@@ -137,7 +149,7 @@ class Player:
         psid = self.iddict.get("pointstreak", -1)
         if psid is not None:
             out.ID_POINTSTREAK = int(psid)
-        out.POSITIONS = self.positions
+        out.POSITIONS = ','.join(self.all_positions)
         out.WEIGHT = self.weight
         out.SBS_ID = self.name.id()
         out.TEAM_ID = self.team_id
@@ -157,15 +169,21 @@ class Player:
 
     def set_position(self, position):
         self.position = self._verified_position(position)
+        if self.position is not None and self.position not in self.all_positions:
+            self.all_positions.append(self.position)
 
     def merge(self, other):
         """ Any attributes of player that are not None will overwrite the value of this current player.
         iddict is updates with data from player as well """
+        # only adopt the name if it's longer and more informative (this avoid single first initial overwriting full)
+        if other.name is not None and len(other.name) > len(self.name):
+            self.name = Name(other.name)
+
         #TODO: make these special attributes special with decorators or something...
-        for attr in ["name",
-                     "number",
+        for attr in ["number",
                      "order",
                      "position",
+                     "all_positions",
                      "bat_hand",
                      "throw_hand",
                      "birthday",
@@ -174,7 +192,10 @@ class Player:
                      "draft_status",
                      "height",
                      "weight",
-                     "team_id"]:
+                     "team_id",
+                     "starter",
+                     "starting_position",
+                     "starting_order"]:
             if other.__dict__.get(attr) is not None:
                 self.__dict__[attr] = other.__dict__[attr]
         self.iddict.update(other.iddict)
@@ -315,7 +336,7 @@ class PlayerList(list):
             if p.name == name:
                 return p
         for p in self:
-            if p.name.split(' ')[-1] == name:
+            if p.name.split(' ')[-1] == name.split(' ')[-1]:
                 return p
 
         raise KeyError("No player found with name %s" % name)
@@ -452,6 +473,40 @@ class Lineup(PlayerList):
         try:
             replace_player = self.find_player_by_position(player.position)
             self.remove(replace_player)
+            if player.order is None:
+                player.order = replace_player.order
+            self.add_player(player)
+        except KeyError:
+            self.add_player(player)
+
+    def update_order(self, player):
+        """
+        if no position yet, put player in their specified position, otherwise, replace player at that position
+        """
+        try:
+            replace_player = self.find_player_by_order(player.order)
+            self.remove(replace_player)
         except KeyError:
             pass
         self.add_player(player)
+
+
+    def find_complete_positions(self):
+        """
+        return a list of all valid position layouts for a team
+        """
+        save_positions = [p.position for p in self]
+        options = []
+        try:
+            team_positions = [p.all_positions for p in self]
+            for test_positions in itertools.product(*team_positions):
+                for player, position in zip(self, test_positions):
+                    player.position = position
+                if self.is_complete():
+                    options.append(test_positions)
+        finally:
+            for player, position in zip(self, save_positions):
+                player.position = position
+
+        return options
+
