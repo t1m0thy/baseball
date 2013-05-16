@@ -1,8 +1,9 @@
 import logging
 import lxml
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 import os
 import json
+import string
 
 from models.playerinfo import PlayerInfo
 
@@ -137,25 +138,13 @@ class PointStreakScraper(GameScraper):
         away_offense = self._make_players(player_dict_list=away_offense_d + away_replaced_d, team_id=self.away_team())
         away_roster.update_players(away_offense + away_pitchers)
 
-        away_starters = Lineup()
-        away_starters.add_player(away_pitchers[0])
-        for p in away_offense:
-            if p.position is not None:
-                away_starters.update_position(p)
-
         home_pitchers = self._make_players(player_dict_list=home_pitchers_d, team_id=self.home_team())
         home_offense = self._make_players(player_dict_list=home_offense_d + home_replaced_d, team_id=self.home_team())
         home_roster.update_players(home_offense + home_pitchers)
 
-        home_starters = Lineup()
-        home_starters.add_player(home_pitchers[0])
-        for p in home_offense:
-            if p.position is not None:
-                home_starters.update_position(p)
-
         self._complete_player_profile(False, away_roster)
         self._complete_player_profile(True, home_roster)
-        return away_roster, home_roster, away_starters, home_starters
+        return away_roster, home_roster
 
     # def scrape_lineup_from_seq_xml(self, seq):
     #     """
@@ -197,6 +186,62 @@ class PointStreakScraper(GameScraper):
     #             except KeyError:
     #                 home_defense_player_list.insert(0, starting_pitcher)
     #     return away_offense_player_list + away_defense_player_list, home_offense_player_list + home_defense_player_list
+
+    def starting_lineups(self, away_roster=None, home_roster=None):
+        complete = False
+        away_lineup = Lineup()
+        home_lineup = Lineup()
+
+        away_player_list = [p for p in self._away_html_player_list if p.starter]
+        home_player_list = [p for p in self._home_html_player_list if p.starter]
+
+        for p in away_player_list:
+            try:
+                roster_player = away_roster.find_player_by_name(p.name)
+                roster_player.merge(p)
+                p = roster_player
+            except KeyError:
+                print "no find ", p.name
+                pass
+            away_lineup.update_player(p)
+
+        for p in home_player_list:
+            try:
+                roster_player = home_roster.find_player_by_name(p.name)
+                roster_player.merge(p)
+                p = roster_player
+            except KeyError:
+                print "no find ", p.name
+                pass
+            home_lineup.update_player(p)
+
+        try:
+            if not home_lineup.is_complete(raise_reason=False):
+                options = home_lineup.find_complete_positions()
+                if len(options) == 1:
+                    for player, position in zip(home_lineup, options[0]):
+                        player.position = position
+                else:
+                    s = "\n".join([p.name + " " + str(p.all_positions) for p in home_lineup])
+                    raise Exception("Can not determine complete fielding lineup from \n" + s)
+        except LineupError, e:
+            logging.error(str(e) + "\nHome \n" + str(home_lineup))
+
+        try:
+            if not away_lineup.is_complete(raise_reason=False):
+                options = away_lineup.find_complete_positions()
+                if len(options) == 1:
+                    for player, position in zip(away_lineup, options[0]):
+                        player.position = position
+                else:
+                    s = "\n".join([p.name + " " + str(p.all_positions) for p in away_lineup])
+                    raise Exception("Can not determine complete fielding lineup from \n" + s)
+        except LineupError, e:
+            logging.error(str(e) + "\nAway \n" + str(away_lineup))
+
+        self._complete_player_profile(False, away_lineup)
+        self._complete_player_profile(True, home_lineup)
+        return away_lineup, home_lineup
 
     # def starting_lineups(self, away_roster=None, home_roster=None):
     #     """
@@ -348,6 +393,8 @@ class PointStreakScraper(GameScraper):
         """
         helper method to build player lists parsed from the html pages.
         """
+        starting_pitcher = True
+        order = 0
         if is_home:
             current_list = self._home_html_player_list
         else:
@@ -360,25 +407,44 @@ class PointStreakScraper(GameScraper):
                 player_num = table_values[0]
                 player_name = table_values[1]
                 player_id = t.a.attrs.get("href").split('=')[1]
-                player = Player(player_name, player_num, iddict={"pointstreak": player_id})
+
                 if batting:
+                    starter = player_name[0] != u"\xa0"
+                    if starter:
+                        order += 1
+                        use_order = order
+                    else:
+                        use_order = None
+                    positions = [p for p in t.find_all("td")[2].childGenerator() if type(p) is not Tag]
+                    player_position = positions[0]
+                    player = Player(player_name,
+                                    player_num,
+                                    order=use_order,
+                                    position=player_position,
+                                    iddict={"pointstreak": player_id},
+                                    starter=starter)  # starting means no indent in lineup
+                    player.all_positions = positions
                     player.verify_bat_stats = dict(AB=int(table_values[3]),
-                                             R=int(table_values[4]),
-                                             H=int(table_values[5]),
-                                             RBI=int(table_values[6]),
-                                             BB=int(table_values[7]),
-                                             SO=int(table_values[8]),
-                                             AVG=float(table_values[9])
-                                             )
+                                                   R=int(table_values[4]),
+                                                   H=int(table_values[5]),
+                                                   RBI=int(table_values[6]),
+                                                   BB=int(table_values[7]),
+                                                   SO=int(table_values[8]),
+                                                   AVG=float(table_values[9])
+                                                   )
                 else:
+                    player = Player(player_name, player_num, position='P', iddict={"pointstreak": player_id})
                     player.verify_pitch_stats = dict(IP=float(table_values[2]),
-                                             H=int(table_values[3]),
-                                             R=int(table_values[4]),
-                                             ER=int(table_values[5]),
-                                             BB=int(table_values[6]),
-                                             SO=int(table_values[7]),
-                                             ERA=float(table_values[8])
-                                             )
+                                                     H=int(table_values[3]),
+                                                     R=int(table_values[4]),
+                                                     ER=int(table_values[5]),
+                                                     BB=int(table_values[6]),
+                                                     SO=int(table_values[7]),
+                                                     ERA=float(table_values[8])
+                                                     )
+                    if starting_pitcher:
+                        player.starter = True
+                        starting_pitcher = False
 
                 current_list.update_player(player)
 
@@ -390,17 +456,21 @@ class PointStreakScraper(GameScraper):
         soup = BeautifulSoup(html)
         divs = self._div_id_dict(soup)
 
+        # it's important to parse pitching first so that a players status
+        # as a starting batter will over ride a non-starting pitching scenario.
+        # sometimes a player will move into relief from another position and keep batting
+        pitching_stats_div = divs[DIV_ID_PITCHING_STATS]
+        self._pitching_stats_tables = pitching_stats_div.find_all("table")
+
+        self._update_html_player_table(is_home=False, batting=False, table=self._pitching_stats_tables[0])
+        self._update_html_player_table(is_home=True, batting=False, table=self._pitching_stats_tables[1])
+
         batting_stats_div = divs[DIV_ID_BATTING_STATS]
         self._batting_stats_tables = batting_stats_div.find_all("table")
 
         self._update_html_player_table(is_home=False, batting=True, table=self._batting_stats_tables[0])
         self._update_html_player_table(is_home=True, batting=True, table=self._batting_stats_tables[1])
 
-        pitching_stats_div = divs[DIV_ID_PITCHING_STATS]
-        self._pitching_stats_tables = pitching_stats_div.find_all("table")
-
-        self._update_html_player_table(is_home=False, batting=False, table=self._pitching_stats_tables[0])
-        self._update_html_player_table(is_home=True, batting=False, table=self._pitching_stats_tables[1])
 
     def _player_url_from_id(self, player_id):
         return PS_PLAYER_URL % player_id
