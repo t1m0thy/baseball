@@ -165,7 +165,7 @@ class Player:
         return len(self.diff(other)) == 0
 
     def __str__(self):
-        return "%2s %3s %s %3s %2s" % (self.order, self.number, str(self.name).ljust(18), self.position, self.bat_hand)
+        return "%2s %3s %s %3s %2s (%s)" % (self.order, self.number, str(self.name).ljust(18), self.position, self.bat_hand, self.all_positions)
 
     def set_position(self, position):
         self.position = self._verified_position(position)
