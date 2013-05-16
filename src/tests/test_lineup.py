@@ -178,6 +178,27 @@ class TestCaseComplete(unittest.TestCase):
         options = self.lineup.find_complete_positions()
         self.assertEqual(len(options), 1)
 
+    def test_find_complete2(self):
+        b2 = self.lineup.find_player_by_position("2B")
+        b2.all_positions.append("C")
+        c = self.lineup.find_player_by_position("C")
+        c.position = "2B"
+        options = self.lineup.find_complete_positions()
+        print options
+        self.assertEqual(len(options), 1)
+
+    def test_find_complete3(self):
+        b2 = self.lineup.find_player_by_position("2B")
+        b2.all_positions.append("P")
+        c = self.lineup.find_player_by_position("C")
+        c.position = "2B"
+        c.all_positions = ["2B"]
+        print self.lineup
+        options = self.lineup.find_complete_positions()
+        print options
+        self.assertEqual(len(options), 0)
+
+
 #    def test_closest_match3(self):
 #        test = Player(None, 26, None, None, None)
 #        result = test.find_closest_name(self.lineup)
