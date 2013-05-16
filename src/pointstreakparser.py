@@ -239,8 +239,9 @@ class PointStreakParser:
                         (pp.Keyword("subs for") + replacing.setResultsName(constants.PARSING.REPLACING)) | \
                         (pp.Keyword("moves to", caseless=True) + position.setResultsName(constants.PARSING.POSITION))
                         ) + period
-        pitching_sub.setParseAction(self.gamewrap.parse_defensive_sub)
+        pitching_sub.setParseAction(self.gamewrap.parse_pitching_sub)
         self.pitching_sub = pitching_sub
+
         offensive_sub = pp.Keyword("Offensive Substitution.") + new_player + \
                         pp.Optional(pp.Keyword("subs for") + replacing) + period
         offensive_sub.setParseAction(self.gamewrap.parse_offensive_sub)
