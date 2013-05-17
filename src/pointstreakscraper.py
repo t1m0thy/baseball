@@ -192,28 +192,25 @@ class PointStreakScraper(GameScraper):
         away_lineup = Lineup()
         home_lineup = Lineup()
 
-        away_player_list = [p for p in self._away_html_player_list if p.starter]
-        home_player_list = [p for p in self._home_html_player_list if p.starter]
+        away_roster = PlayerList()
+        home_roster = PlayerList()
 
-        for p in away_player_list:
-            try:
-                roster_player = away_roster.find_player_by_name(p.name)
-                roster_player.merge(p)
-                p = roster_player
-            except KeyError:
-                print "no find ", p.name
-                pass
-            away_lineup.update_player(p)
+        away_player_list = [p for p in self._away_html_player_list]
+        home_player_list = [p for p in self._home_html_player_list]
 
-        for p in home_player_list:
-            try:
-                roster_player = home_roster.find_player_by_name(p.name)
-                roster_player.merge(p)
-                p = roster_player
-            except KeyError:
-                print "no find ", p.name
-                pass
-            home_lineup.update_player(p)
+        for player_list, roster, starting_lineup in ((away_player_list, away_roster, away_lineup),
+                                                     (home_player_list, home_roster, home_lineup)):
+            for p in player_list:
+                try:
+                    roster_player = roster.find_player_by_id("pointstreak", p.iddict["pointstreak"])
+                    roster_player.merge(p)
+                    p = roster_player
+                except KeyError:
+                    print "no find ", p.name
+                    pass
+                if p.starter:
+                    starting_lineup.update_player(p)
+                roster.update_player(p)
 
         for lineup, which_lineup in [(home_lineup, "Home"), (away_lineup, "Away")]:
             try:
@@ -233,9 +230,9 @@ class PointStreakScraper(GameScraper):
             except LineupError, e:
                 logging.error(str(e) + "\n" + which_lineup + "\n" + str(lineup))
 
-        self._complete_player_profile(False, away_lineup)
-        self._complete_player_profile(True, home_lineup)
-        return away_lineup, home_lineup
+        self._complete_player_profile(False, away_roster)
+        self._complete_player_profile(True, home_roster)
+        return away_lineup, home_lineup, away_roster, home_roster
 
     # def starting_lineups(self, away_roster=None, home_roster=None):
     #     """
@@ -296,6 +293,7 @@ class PointStreakScraper(GameScraper):
     def get_player_info(self, player_id):
         html = self._player_page_from_id(player_id)
         soup = BeautifulSoup(html)
+        full_name = soup.find("title").text.split("-", 1)[0]
         divs = soup.find_all("div", {"id": "psbb_player_info"})
         if divs:
             player_info = divs[0]
@@ -318,7 +316,7 @@ class PointStreakScraper(GameScraper):
         pinfo.HOMETOWN = info_dict.get("Hometown")
         pinfo.POSITIONS = info_dict.get("Position")
         pinfo.WEIGHT = info_dict.get("Weight")
-        return pinfo
+        return full_name, pinfo
 
     def _get_point_streak_url(self):
         return make_html_url(self.gameid)
@@ -485,7 +483,8 @@ class PointStreakScraper(GameScraper):
                 logger.exception("unable to find id for player {}".format(player.name))
 
             try:
-                player_info = self.get_player_info(player_id)
+                full_name, player_info = self.get_player_info(player_id)
+                player.set_name(full_name)
                 player.iddict["pointstreak"] = player_id
             except:
                 logger.exception("Unable to find player with id: {}".format(player_id))
