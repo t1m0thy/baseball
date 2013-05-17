@@ -17,6 +17,8 @@ from sqlalchemy.orm import sessionmaker
 from models import event
 from models import playerinfo
 from models import gameinfomodel
+from models import teaminfomodel
+
 
 CHECKED_PLAYERS = {}
 
@@ -37,6 +39,16 @@ def import_game(gameid, cache_path=None, game=None, session=None):
 
     scraper = pss.PointStreakScraper(gameid, cache_path)
 
+    #=======================================================================
+    # Parse Teams and check DB
+    #=======================================================================
+
+    home = scraper.home_team()
+    away = scraper.away_team()
+
+    for team_name in (home, away):
+        session.query(teaminfomodel.TeamInfo).filter_by(FULL_NAME=team_name)
+
     game_info = gameinfo.GameInfo(gameid)
     game_info.set_game_info(scraper.game_info)
 
@@ -51,6 +63,13 @@ def import_game(gameid, cache_path=None, game=None, session=None):
 
     # sync up with the player database.
     if session is not None:
+        game_info_query = session.query(gameinfomodel.GameInfoModel).filter_by(GAME_ID=gameid)
+        if game_info_query.count() < 1:
+            session.add(game_info.as_model())
+            logger.info("added game info to db")
+        elif game_info_query.count() > 1:
+            logger.warning("More than one game found with id: {}".format(game.game_id))
+
         for player in away_roster + home_roster:
             logger.info("Checking DB for Player {}".format(player.name))
             try:
@@ -76,17 +95,8 @@ def import_game(gameid, cache_path=None, game=None, session=None):
                     #session.merge(m)
                 CHECKED_PLAYERS[(player.name.first(), player.name.last(), player.team_id)] = player.name.id()
 
-        game_info_query = session.query(gameinfomodel.GameInfoModel).filter_by(GAME_ID=gameid)
-        if game_info_query.count() < 1:
-            session.add(game_info.as_model())
-            logger.info("added game info to db")
-        elif game_info_query.count() > 1:
-            logger.warning("More than one game found with id: {}".format(game.game_id))
-
     if game is None:
         game = gamestate.GameState()
-    home = scraper.home_team()
-    away = scraper.away_team()
 
     game.home_team_id = home
     game.visiting_team = away
@@ -166,6 +176,7 @@ def init_database(use_mysql=False, dbname="sbs"):
     event.Base.metadata.create_all(engine)
     gameinfomodel.Base.metadata.create_all(engine)
     playerinfo.Base.metadata.create_all(engine)
+    teaminfomodel.Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
     return session
