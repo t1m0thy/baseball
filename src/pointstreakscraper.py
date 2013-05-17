@@ -170,7 +170,7 @@ class PointStreakScraper(GameScraper):
     def get_player_info(self, player_id):
         html = self._player_page_from_id(player_id)
         soup = BeautifulSoup(html)
-        full_name = soup.find("title").text.split("-", 1)[0]
+        full_name = soup.find("title").text.split(" - ", 1)[0]
         divs = soup.find_all("div", {"id": "psbb_player_info"})
         if divs:
             player_info = divs[0]
