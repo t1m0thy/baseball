@@ -1511,23 +1511,28 @@ class GameState:
                     return
                 else:
                     raise
-
-            new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
-            new_player.order = possible_remove_player.order
-            if position != '':
-                new_player.set_position(position)
-            if possible_remove_player.position == position:
-                # the player being replaced is at the new position, so must be removed
-                removed_player = self._current_fielding_lineup().remove_player(replacing_name)
-            try:
-                self._current_fielding_lineup().add_player(new_player)
-                new_player.order = possible_remove_player.order  # only update the order if this player is actually new to lineup
-            except LineupError:
-                existing_player = self._current_fielding_roster().find_player_by_name(new_player.name)
-                existing_player.merge(new_player)
-                existing_player.set_pending_sub()
-                logger.warn("{} already in lineup.".format(new_player.name))
-
+            # super special case of going to 9 man (p/dh) to 10 man
+            self_sub = possible_remove_player.name == new_player_name
+            pitching = possible_remove_player.position == 'P'
+            no_dh = not self._current_fielding_lineup().has_position('DH')
+            if self_sub and pitching and no_dh:
+                possible_remove_player.position = 'DH'
+            else:
+                new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
+                new_player.order = possible_remove_player.order
+                if position != '':
+                    new_player.set_position(position)
+                if possible_remove_player.position == position:
+                    # the player being replaced is at the new position, so must be removed
+                    removed_player = self._current_fielding_lineup().remove_player(replacing_name)
+                try:
+                    self._current_fielding_lineup().add_player(new_player)
+                    new_player.order = possible_remove_player.order  # only update the order if this player is actually new to lineup
+                except LineupError:
+                    existing_player = self._current_fielding_roster().find_player_by_name(new_player.name)
+                    existing_player.merge(new_player)
+                    existing_player.set_pending_sub()
+                    logger.warn("{} already in lineup.".format(new_player.name))
         self._update_position_attributes_with_player(self._current_fielding_roster().find_player_by_name(new_player_name))
 
     def _update_position_attributes_with_player(self, new_player):

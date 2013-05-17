@@ -263,7 +263,8 @@ class PointStreakScraper(GameScraper):
                                                    SO=int(table_values[8]),
                                                    AVG=float(table_values[9])
                                                    )
-                    if current_list.update_player(player) and starter:
+                    current_list.update_player(player)
+                    if starter:
                         curmax = current_list.max_order()
                         if curmax is None:
                             player.order = 1
@@ -291,21 +292,17 @@ class PointStreakScraper(GameScraper):
         """
         divs = self._div_id_dict(self.soup)
 
-        # it's important to parse pitching first so that a players status
-        # as a starting batter will over ride a non-starting pitching scenario.
-        # sometimes a player will move into relief from another position and keep batting
-        pitching_stats_div = divs[DIV_ID_PITCHING_STATS]
-        self._pitching_stats_tables = pitching_stats_div.find_all("table")
-
-        self._update_html_player_table(is_home=False, batting=False, table=self._pitching_stats_tables[0])
-        self._update_html_player_table(is_home=True, batting=False, table=self._pitching_stats_tables[1])
-
         batting_stats_div = divs[DIV_ID_BATTING_STATS]
         self._batting_stats_tables = batting_stats_div.find_all("table")
 
         self._update_html_player_table(is_home=False, batting=True, table=self._batting_stats_tables[0])
         self._update_html_player_table(is_home=True, batting=True, table=self._batting_stats_tables[1])
 
+        pitching_stats_div = divs[DIV_ID_PITCHING_STATS]
+        self._pitching_stats_tables = pitching_stats_div.find_all("table")
+
+        self._update_html_player_table(is_home=False, batting=False, table=self._pitching_stats_tables[0])
+        self._update_html_player_table(is_home=True, batting=False, table=self._pitching_stats_tables[1])
 
     def _player_url_from_id(self, player_id):
         return PS_PLAYER_URL % player_id

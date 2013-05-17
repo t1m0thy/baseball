@@ -65,7 +65,7 @@ class Name(str):
 
 
 class Player:
-    def __init__(self, name, number=None, order=None, position=None, bat_hand='?', throw_hand='?', iddict={}, team_id=None, starter=False):
+    def __init__(self, name, number=None, order=None, position=None, bat_hand='?', throw_hand='?', iddict={}, team_id=None, starter=None):
         """
         setup Player object
 
@@ -183,7 +183,6 @@ class Player:
         for attr in ["number",
                      "order",
                      "position",
-                     "all_positions",
                      "bat_hand",
                      "throw_hand",
                      "birthday",
@@ -198,6 +197,9 @@ class Player:
                      "starting_order"]:
             if other.__dict__.get(attr) is not None:
                 self.__dict__[attr] = other.__dict__[attr]
+        for p in other.all_positions:
+            if p is not None and p not in self.all_positions:
+                self.all_positions.append(p)
         self.iddict.update(other.iddict)
         self.verify_pitch_stats.update(other.verify_pitch_stats)
         self.verify_bat_stats.update(other.verify_bat_stats)
