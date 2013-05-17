@@ -64,12 +64,13 @@ def import_game(gameid, cache_path=None, game=None, session=None):
     # sync up with the player database.
     if session is not None:
         game_info_query = session.query(gameinfomodel.GameInfoModel).filter_by(GAME_ID=gameid)
+
         if game_info_query.count() < 1:
             session.add(game_info.as_model())
             logger.info("added game info to db")
-        elif game_info_query.count() > 1:
-            logger.warning("More than one game found with id: {}".format(game.game_id))
         else:
+            if game_info_query.count() > 1:
+                logger.warning("More than one game found with id: {}".format(game.game_id))
             game_info_query.delete()
             session.add(game_info.as_model())
 
