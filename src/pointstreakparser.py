@@ -138,7 +138,7 @@ class PointStreakParser:
                     popup
 
         out_description = (left_paren +
-                           pp.OneOrMore(possibles | pp.Word(pp.alphanums + ':')) +
+                           pp.OneOrMore(possibles | pp.Word(pp.alphanums + ':') | (left_paren + pp.Word(pp.alphanums + ':-') + right_paren)) +
                            right_paren).setResultsName(constants.PARSING.DESCRIPTION)
 
         putout = (player + pp.Keyword("putout", caseless=True) + pp.Optional(out_description)).setParseAction(self.gamewrap.put_out) + pp.Keyword("for out number") + pp.Word(pp.nums)
