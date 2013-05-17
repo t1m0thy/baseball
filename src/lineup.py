@@ -328,16 +328,19 @@ class PlayerList(list):
         else:
             merge_index = my_player_names.index(player.name)
             current_player = self[merge_index]
-            current_player.merge(player)
+            if current_player.iddict != player.iddict:
+                self.append(player)
+            else:
+                current_player.merge(player)
 
     def find_player_by_name(self, name):
         name = name.strip()
         for p in self:
             if p.name == name:
                 return p
-        for p in self:
-            if p.name.split(' ')[-1] == name.split(' ')[-1]:
-                return p
+        # for p in self:
+        #     if p.name.split(' ')[-1] == name.split(' ')[-1]:
+        #         return p
 
         raise KeyError("No player found with name %s" % name)
 
@@ -352,6 +355,15 @@ class PlayerList(list):
             if p.position == position:
                 return p
         raise KeyError("No player found with position %s" % position)
+
+    def find_player_by_id(self, idkey, idval):
+        """
+        retrieve player by matches in the iddict
+        """
+        for p in self:
+            if p.iddict.get(idkey) == idval:
+                return p
+        raise KeyError("No player found with id {} = {}".format(idkey, idval))
 
     def set_player_position(self, name, position):
         self.find_player_by_name(name).set_position(position)
