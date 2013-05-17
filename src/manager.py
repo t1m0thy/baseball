@@ -70,7 +70,7 @@ def import_game(gameid, cache_path=None, game=None, session=None):
             logger.info("added game info to db")
         else:
             if game_info_query.count() > 1:
-                logger.warning("More than one game found with id: {}".format(game.game_id))
+                logger.warning("More than one game found with id: {}".format(gameid))
             game_info_query.delete()
             session.add(game_info.as_model())
 
