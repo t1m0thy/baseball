@@ -350,6 +350,68 @@ class PointStreakScraper(GameScraper):
             except:
                 logger.exception("Unable to find extra info on {}".format(player.name))
 
+    def name_spelling_corrections_dict(self):
+        name_corrections = {}
+        away = self.root.find(".//{*}VisitingTeam")
+        away_offense_d = [dict(e.items()) for e in away.find(".//{*}Offense").getchildren()]
+        away_replaced_d = [dict(e.items()) for e in away.find(".//{*}ReplacedOffense").getchildren()]
+        away_pitchers_d = [dict(e.items() + [("Position", "P")]) for e in away.find(".//{*}Pitchers").getchildren()]
+
+        home = self.root.find(".//{*}HomeTeam")
+        home_offense_d = [dict(e.items()) for e in home.find(".//{*}Offense").getchildren()]
+        home_replaced_d = [dict(e.items()) for e in home.find(".//{*}ReplacedOffense").getchildren()]
+        home_pitchers_d = [dict(e.items() + [("Position", "P")]) for e in home.find(".//{*}Pitchers").getchildren()]
+
+        away_roster = PlayerList()
+        home_roster = PlayerList()
+
+        away_pitchers = self._make_players(player_dict_list=away_pitchers_d, team_id=self.away_team())
+        away_offense = self._make_players(player_dict_list=away_offense_d + away_replaced_d, team_id=self.away_team())
+        away_roster.update_players(away_offense + away_pitchers)
+
+        home_pitchers = self._make_players(player_dict_list=home_pitchers_d, team_id=self.home_team())
+        home_offense = self._make_players(player_dict_list=home_offense_d + home_replaced_d, team_id=self.home_team())
+        home_roster.update_players(home_offense + home_pitchers)
+
+        for roster, html_player_list in [(away_roster, self._away_html_player_list), (home_roster, self._home_html_player_list)]:
+            for xmlplayer in roster:
+                htmlplayer = xmlplayer.find_closest_name(html_player_list)
+                if htmlplayer.name != xmlplayer.name:
+                    name_corrections[xmlplayer.name] = htmlplayer.name
+
+        return name_corrections
+
+    def _make_pitcher(self, player_dict, team_id=None):
+        new_player = Player(player_dict.get("Name"),
+                            player_dict.get("Number"),
+                            player_dict.get("Order"),
+                            constants.P,
+                            player_dict.get("Hand"),
+                            iddict={"pointstreak": player_dict.get("PlayerId")},
+                            team_id=team_id)
+        if new_player.name is not None:
+            return new_player
+        else:
+            return None
+
+    def _make_players(self, player_dict_list, team_id=None):
+        out = PlayerList()
+        for player_dict in player_dict_list:
+            try:
+                new_player = Player(player_dict.get("Name"),
+                                    player_dict.get("Number"),
+                                    player_dict.get("Order"),
+                                    player_dict.get("Position"),
+                                    player_dict.get("Hand"),
+                                    iddict={"pointstreak": player_dict.get("PlayerId")},
+                                    team_id=team_id)
+                if new_player.name is not None:
+                    out.add_player(new_player)
+            except (AttributeError, KeyError):
+                logger.error("making Player from dict = %s" % player_dict)
+                raise
+        return out
+
 
 class PSPHalfInningXML(HalfInning):
     def __init__(self, etree):
@@ -401,6 +463,8 @@ class PSPRawEventXML(RawEvent):
             return self._type
         else:
             return "{} #{} {}".format(self._type, self._batter_number, self._batter_name)
+
+
 
     ######################### GRAVEYARD #################################
     # TDH - May 2013
@@ -537,34 +601,3 @@ class PSPRawEventXML(RawEvent):
     #     self._complete_player_profile(True, home_lineup)
     #     return away_lineup, home_lineup
 
-
-    # def _make_pitcher(self, player_dict, team_id=None):
-    #     new_player = Player(player_dict.get("Name"),
-    #                         player_dict.get("Number"),
-    #                         player_dict.get("Order"),
-    #                         constants.P,
-    #                         player_dict.get("Hand"),
-    #                         iddict={"pointstreak": None},
-    #                         team_id=team_id)
-    #     if new_player.name is not None:
-    #         return new_player
-    #     else:
-    #         return None
-
-    # def _make_players(self, player_dict_list, team_id=None):
-    #     out = PlayerList()
-    #     for player_dict in player_dict_list:
-    #         try:
-    #             new_player = Player(player_dict.get("Name"),
-    #                                 player_dict.get("Number"),
-    #                                 player_dict.get("Order"),
-    #                                 player_dict.get("Position"),
-    #                                 player_dict.get("Hand"),
-    #                                 iddict={"pointstreak": None},
-    #                                 team_id=team_id)
-    #             if new_player.name is not None:
-    #                 out.add_player(new_player)
-    #         except (AttributeError, KeyError):
-    #             logger.error("making Player from dict = %s" % player_dict)
-    #             raise
-    #     return out
