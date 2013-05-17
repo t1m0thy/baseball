@@ -232,7 +232,6 @@ class PointStreakScraper(GameScraper):
         helper method to build player lists parsed from the html pages.
         """
         starting_pitcher = True
-        order = 0
         if is_home:
             current_list = self._home_html_player_list
         else:
@@ -248,16 +247,10 @@ class PointStreakScraper(GameScraper):
 
                 if batting:
                     starter = player_name[0] != u"\xa0"
-                    if starter:
-                        order += 1
-                        use_order = order
-                    else:
-                        use_order = None
                     positions = [p for p in t.find_all("td")[2].childGenerator() if type(p) is not Tag]
                     player_position = positions[0]
                     player = Player(player_name,
                                     player_num,
-                                    order=use_order,
                                     position=player_position,
                                     iddict={"pointstreak": player_id},
                                     starter=starter)  # starting means no indent in lineup
@@ -270,6 +263,13 @@ class PointStreakScraper(GameScraper):
                                                    SO=int(table_values[8]),
                                                    AVG=float(table_values[9])
                                                    )
+                    if current_list.update_player(player) and starter:
+                        curmax = current_list.max_order()
+                        if curmax is None:
+                            player.order = 1
+                        else:
+                            player.order = curmax + 1
+
                 else:
                     player = Player(player_name, player_num, position='P', iddict={"pointstreak": player_id})
                     player.verify_pitch_stats = dict(IP=float(table_values[2]),
@@ -283,8 +283,7 @@ class PointStreakScraper(GameScraper):
                     if starting_pitcher:
                         player.starter = True
                         starting_pitcher = False
-
-                current_list.update_player(player)
+                    current_list.update_player(player)
 
     def _build_html_player_tables(self):
         """

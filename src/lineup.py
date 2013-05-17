@@ -309,6 +309,11 @@ class PlayerList(list):
 #        new_list.add_players(player_list)
 #        return new_list
 
+    def max_order(self):
+        orders = [p.order for p in self]
+        return max(orders)
+
+
     def add_player(self, player):
         """add_player if not already in lineup"""
         if player not in self:
@@ -319,19 +324,23 @@ class PlayerList(list):
     def update_player(self, player):
         """add_player.
         if already in lineup, replace old player
+        return True if added, False if merged with old
         """
         my_player_names = [p.name for p in self]
         if player.name is None:
             raise StandardError("All Players must have names")
         if player.name not in my_player_names:
             self.append(player)
+            return True
         else:
             merge_index = my_player_names.index(player.name)
             current_player = self[merge_index]
             if current_player.iddict != player.iddict:
                 self.append(player)
+                return True
             else:
                 current_player.merge(player)
+                return False
 
     def find_player_by_name(self, name):
         name = name.strip()
