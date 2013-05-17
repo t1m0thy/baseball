@@ -212,6 +212,8 @@ pitches = [('+', 'following pickoff throw by the catcher'),
  ('Y', 'ball put into play on pitchout')]
 
 game_info_fields = [#('id', 'ID'),
+                    ('season_id', 'SEASON_ID'),
+                    ('league_id', 'LEAGUE_ID'),
                     ('game_id', 'GAME_ID'),
                     ('game_dt', 'GAME_DT'),
                     ('game_ct', 'GAME_CT'),

@@ -11,6 +11,8 @@ class GameInfoModel(Base):
 
     ID = Column(Integer, primary_key=True)
     GAME_ID = Column(String(12))
+    SEASON_ID = Column(String(12))
+    LEAGUE_ID = Column(String(12))
     GAME_DT = Column(Integer)
     GAME_CT = Column(Integer)
     GAME_DY = Column(String(9))

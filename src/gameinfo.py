@@ -7,6 +7,8 @@ from constants import POSITION_CODES
 class GameInfo:
     def __init__(self, gameid):
         self.game_id = gameid
+        self.season_id = ""
+        self.league_id = ""
         self.game_dt = ""
         self.game_ct = 0
         self.game_dy = ""
@@ -117,6 +119,9 @@ class GameInfo:
     def set_game_info(self, game_info):
         self.away_team_id = game_info.get("VisitingTeam")
         self.home_team_id = game_info.get("HomeTeam")
+
+        self.season_id = game_info.get("season_id")
+        self.league_id = game_info.get("league_id")
 
         start_date_time = datetime.datetime.strptime(game_info.get("Date", "") + ", " + game_info.get("Time", ""),
                                                      "%A, %B %d %Y, %I:%M %p")
