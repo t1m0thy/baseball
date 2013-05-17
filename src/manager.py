@@ -70,7 +70,8 @@ def import_game(gameid, cache_path=None, game=None, session=None):
         elif game_info_query.count() > 1:
             logger.warning("More than one game found with id: {}".format(game.game_id))
         else:
-            session.merge(game_info.as_model())
+            game_info_query.delete()
+            session.add(game_info.as_model())
 
         for player in away_roster + home_roster:
             logger.info("Checking DB for Player {}".format(player.name))
