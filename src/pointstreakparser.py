@@ -118,6 +118,7 @@ class PointStreakParser:
                    (position | location).setResultsName(constants.PARSING.POSITION) +
                    pp.Optional(pp.Keyword("in foul territory", caseless=True).setResultsName(constants.PARSING_OUTS.FOUL))
                    ).setResultsName(constants.PARSING_OUTS.FLY_OUT)
+        foul_fly_out_uncommon = (foul + dash + pp.Word(pp.nums).setResultsName(constants.PARSING.POSITION)).setResultsName(constants.PARSING_OUTS.FLY_OUT)
 
         sacrifice_fly = (pp.Keyword("sacrifice fly to", caseless=True).setResultsName(constants.PARSING_OUTS.SACRIFICE) +
                          position.setResultsName(constants.PARSING.POSITION)).setResultsName(constants.PARSING_OUTS.FLY_OUT)
@@ -135,7 +136,8 @@ class PointStreakParser:
                     sacrifice_fly | \
                     sac_fly_abbreviated | \
                     line_drive | \
-                    popup
+                    popup | \
+                    foul_fly_out_uncommon
 
         out_description = (left_paren +
                            pp.OneOrMore(possibles | pp.Word(pp.alphanums + ':') | (left_paren + pp.Word(pp.alphanums + ':-') + right_paren)) +
