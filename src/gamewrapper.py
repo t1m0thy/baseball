@@ -28,10 +28,10 @@ class GameWrapper:
         catch_position = tokens.get(constants.PARSE_PITCHING.CATCH_POSITION)
         self._game.pitch_pickoff_attempt(base, throw_position, catch_position)
 
-    def swinging_strike(self, *args):
+    def swinging_strike(self,  text, location, tokens):
         self._game.pitch_swinging_strike()
 
-    def called_strike(self, *args):
+    def called_strike(self,  text, location, tokens):
         self._game.pitch_called_strike()
 
     def ball(self, *args):
@@ -46,9 +46,12 @@ class GameWrapper:
         self._game.pitch_foul()
 
     def put_out(self, text="", location=None, tokens={}):
-        logger.info("Rxed put out text :" + text + ".")
+        logger.info("Rxed putout text :" + text + ".")
+        logger.info("Rxed putout location {}".format(location))
+        logger.info("Rxed putout tokens {}".format(tokens))
+
         if text == '':
-            return
+             return
         player_name = tokens[constants.PARSING.PLAYER][constants.PARSING_PLAYER.NAME]
         if type(player_name) == list:
             player_name = ' '.join(player_name)
@@ -70,7 +73,7 @@ class GameWrapper:
             self._game.out_dropped_third_strike(player_name)
         elif constants.PARSING_OUTS.CAUGHT_STEALING in description:
             logger.info("Caught stealing")
-            self._game.out_caught_stealing(player_name, description.get(constants.PARSING_OUTS.THROWN_OUT),
+            self._game.out_caught_stealing(player_name, description.get(constants.PARSING_OUTS.THROWN_OUT, []),
                                            constants.PARSING_OUTS.DOUBLE_PLAY in description)
         elif constants.PARSING_OUTS.UNASSISTED in description or constants.PARSING_OUTS.LINE_DRIVE in description:
             self._game.out_unassisted(player_name,
