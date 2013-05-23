@@ -138,7 +138,7 @@ class PointStreakParser:
                     foul_fly_out_uncommon
 
         out_description = (left_paren +
-                           pp.OneOrMore(possibles | pp.Word(pp.alphanums + ':') | \
+                           pp.ZeroOrMore(possibles | pp.Word(pp.alphanums + ':') | \
                            (left_paren + pp.Word(pp.alphanums + ':-') + right_paren)) +
                            right_paren).setResultsName(constants.PARSING.DESCRIPTION)
 
