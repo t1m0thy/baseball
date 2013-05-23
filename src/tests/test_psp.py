@@ -25,3 +25,9 @@ class TestCase(unittest.TestCase):
     def test_cs2(self):
         self.game._bases.advance('Collin Shaw', 1)
         self.parser.parse_event("Ball, Ball, Ball, Called Strike, 19 Collin Shaw putout (Caught Stealing: CS) for out number 3")
+
+    def test_parse(self):
+        self.parser.parse_event("Called Strike, Ball, Foul, Ball, 15 John Murphy advances to 1st (error by the third baseman)")
+
+    def test_parse2(self):
+        self.parser.parse_event("35 Ryan Donahue subs for Chris Matulis.")
