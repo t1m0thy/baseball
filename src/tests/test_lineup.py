@@ -26,6 +26,11 @@ class TestNames(unittest.TestCase):
         b = Name("Bob Brown")
         self.assertNotEqual(a.last, b.last)
 
+    def test_equality5(self):
+        a = Name("tim hirzel")
+        b = Name("Tim Hirzel")
+        self.assertTrue(a == b)
+
 
 class TestPlayer(unittest.TestCase):
     def test_merge(self):
