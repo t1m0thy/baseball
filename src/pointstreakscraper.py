@@ -12,8 +12,8 @@ from scrapetools import get_cached_url
 from lineup import Lineup, Player, PlayerList, LineupError
 import constants
 
-BASE_DIR = os.path.dirname(__file__)
-DEFAULT_CACHE_PATH = os.path.join(BASE_DIR, "../htmlcache/")
+
+DEFAULT_CACHE_PATH = os.path.join(constants.BASE_DIR, "../htmlcache/")
 GAME_CACHE_PATH = "games/game_%s.html"
 GAME_XML_CACHE_PATH = "games/game_%s.xml"
 GAME_XML_SEQ_CACHE_PATH = "games/game_%s_seq_%s.xml"
@@ -85,6 +85,7 @@ def scrape_season_gameids(seasonid, cache_path=None):
 
 class PointStreakScraper(GameScraper):
     def __init__(self, gameid, cache_path=None):
+        self.critical_errors = False
         self.gameid = str(gameid)
         if cache_path is not None:
             self._cache_path = cache_path
@@ -157,9 +158,15 @@ class PointStreakScraper(GameScraper):
                                      "from_p": player.position}
                                 logger.warning("Automatically Moving {name} to position {to_p} from position {from_p}".format(**d))
                                 player.position = position
+                    elif len(options) > 1:
+                        s = "\n".join([p.name + " " + str(p.all_positions) for p in lineup])
+                        logger.critical("Too many potential lineups to find the starting lineup \n" + s)
+                        self.critical_errors = True
                     else:
                         s = "\n".join([p.name + " " + str(p.all_positions) for p in lineup])
-                        raise StandardError("Can not determine complete fielding lineup from \n" + s)
+                        logger.critical("Can not determine complete fielding lineup from \n" + s)
+                        self.critical_errors = True
+
             except LineupError, e:
                 logging.error(str(e) + "\n" + which_lineup + "\n" + str(lineup))
 
