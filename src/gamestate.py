@@ -697,7 +697,7 @@ class GameState:
             try:
                 self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
             except KeyError:
-                if batter_player.order == None:
+                if batter_player.order is None:
                     batter_player.order = self._current_place_in_order
                     logger.warning("{} order auto set to {}".format(batter_player.name, batter_player.order))
             assert(batter_player.order == self._current_place_in_order)
