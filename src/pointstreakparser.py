@@ -143,7 +143,6 @@ class PointStreakParser:
                            right_paren).setResultsName(constants.PARSING.DESCRIPTION)
 
         putout = (player + pp.Keyword("putout", caseless=True) + pp.Optional(out_description) + pp.Keyword("for out number") + pp.Word(pp.nums)).setParseAction(self.gamewrap.put_out)
-        import pdb; pdb.set_trace()
         #===============================================================================
         # Advancing
         #===============================================================================
