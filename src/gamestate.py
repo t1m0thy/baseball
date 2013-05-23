@@ -439,10 +439,13 @@ class GameState:
             self.batting_lineup = self.home_lineup
             self.fielding_lineup = self.away_lineup
             self._current_place_in_order = self._home_place_in_batting_order
+            logger.info("home lineup starts at order {}".format(self._current_place_in_order))
         else:
             self.batting_lineup = self.away_lineup
             self.fielding_lineup = self.home_lineup
             self._current_place_in_order = self._away_place_in_batting_order
+            logger.info("away lineup starts at order {}".format(self._current_place_in_order))
+
         self._update_fielders()
 
     def _update_fielders(self):
@@ -691,6 +694,12 @@ class GameState:
 
         try:
             batter_player = self._current_batting_lineup().find_player_by_name(player_name)
+            try:
+                self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
+            except KeyError:
+                if batter_player.order == None:
+                    batter_player.order = self._current_place_in_order
+                    logger.warning("{} order auto set to {}".format(batter_player.name, batter_player.order))
             assert(batter_player.order == self._current_place_in_order)
             logger.info("#{} {} to Bat".format(batter_player.number, batter_player.name))
         except KeyError:
@@ -997,7 +1006,7 @@ class GameState:
         self._out(player_name)
         logger.debug("{} thrown out {}".format(player_name, fielders))
 
-    def out_caught_stealing(self, runner_name, fielders, double_play=False):
+    def out_caught_stealing(self, runner_name, fielders=[], double_play=False):
         self._record_any_pending_runner_event()
         if runner_name == self.runner_on_first:
             self.caught_stealing_for_runner_on_first = True
@@ -1006,7 +1015,8 @@ class GameState:
         elif runner_name == self.runner_on_third:
             self.caught_stealing_for_runner_on_third = True
 
-        self._credit_fielders_with_out(runner_name, fielders)
+        if fielders:
+            self._credit_fielders_with_out(runner_name, fielders)
         self.double_play_flag = double_play
 
         if len(self.pitch_sequence) > 0:
@@ -1466,12 +1476,12 @@ class GameState:
 
     def defensive_sub(self, new_player_name, replacing_name='', position=''):
         # "moves to" or "subs at" Case
-
+        current_defense = self._current_fielding_lineup()
         logging.info("Defensive Sub -- {} for {} at {}".format(new_player_name, replacing_name, position))
         if replacing_name == '':
             if position == '':
                 new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
-                current_vacancies = self._current_fielding_lineup().missing_fielders()
+                current_vacancies = current_defense.missing_fielders()
                 if len(current_vacancies) == 1:
                     position = current_vacancies[0]
                     logger.warning("Guessing at position {} of unspecified defensive sub {}".format(position, new_player.name))
@@ -1480,7 +1490,6 @@ class GameState:
                     logger.warning("Using known player position {} of unspecified defensive sub {}".format(position, new_player.name))
                 if position is None or position == '':
                     raise StandardError("Defensive Sub Error, no new position or replacement name")
-            current_defense = self._current_fielding_lineup()
             try:
                 # player moves to new position
                 new_player = current_defense.find_player_by_name(new_player_name)
@@ -1501,9 +1510,9 @@ class GameState:
                 current_defense.add_player(new_player)
         else:
             try:
-                possible_remove_player = self._current_fielding_lineup().find_player_by_name(replacing_name)
+                possible_remove_player = current_defense.find_player_by_name(replacing_name)
             except KeyError:
-                if new_player_name in [p.name for p in self._current_fielding_lineup()]:
+                if new_player_name in [p.name for p in current_defense]:
                     new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
                     if position != '':
                         new_player.set_position(position)
@@ -1511,22 +1520,27 @@ class GameState:
                     return
                 else:
                     raise
+
             # super special case of going to 9 man (p/dh) to 10 man
             self_sub = possible_remove_player.name == new_player_name
             pitching = possible_remove_player.position == 'P'
-            no_dh = not self._current_fielding_lineup().has_position('DH')
+            no_dh = not current_defense.has_position('DH')
             if self_sub and pitching and no_dh:
                 possible_remove_player.position = 'DH'
             else:
+
                 new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
-                new_player.order = possible_remove_player.order
+                logger.info("moving {} into lineup\n {}".format(new_player, str(current_defense)))
+                # if new_player.order is None:
+                #     new_player.order = possible_remove_player.order
                 if position != '':
                     new_player.set_position(position)
                 if possible_remove_player.position == position:
                     # the player being replaced is at the new position, so must be removed
-                    removed_player = self._current_fielding_lineup().remove_player(replacing_name)
+                    removed_player = current_defense.remove_player(replacing_name)
                 try:
-                    self._current_fielding_lineup().add_player(new_player)
+
+                    current_defense.add_player(new_player)
                     new_player.order = possible_remove_player.order  # only update the order if this player is actually new to lineup
                 except LineupError:
                     existing_player = self._current_fielding_roster().find_player_by_name(new_player.name)
