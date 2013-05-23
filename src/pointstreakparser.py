@@ -26,27 +26,25 @@ class PointStreakParser:
         # Names
         #=======================================================================
 
-        catch_all = pp.OneOrMore(pp.Word(pp.alphas+'-')).setResultsName(constants.PARSING_PLAYER.NAME)
+        catch_all = (pp.Word(pp.alphas+'-') + pp.OneOrMore(pp.Word(pp.alphas+'-'))).setResultsName(constants.PARSING_PLAYER.NAME)
         if self.player_names:
-            player_no_num = pp.Keyword(self.player_names[0], caseless=True)
+            player_no_num = pp.Keyword(self.player_names[0], caseless=True).setResultsName(constants.PARSING_PLAYER.NAME)
             for name in self.player_names[1:]:
-                player_no_num |= pp.Keyword(name, caseless=True)
+                player_no_num |= pp.Keyword(name, caseless=True).setResultsName(constants.PARSING_PLAYER.NAME)
             for name in self.player_names:
                 if "'" in name:
                     version = "&apos;".join(name.split("'"))
                     version2 = "_apos;".join(name.split("'"))
-                    kw = pp.Keyword(version, caseless=True)
+                    kw = pp.Keyword(version, caseless=True).setResultsName(constants.PARSING_PLAYER.NAME)
                     player_no_num |= kw
-                    kw2 = pp.Keyword(version2, caseless=True)
+                    kw2 = pp.Keyword(version2, caseless=True).setResultsName(constants.PARSING_PLAYER.NAME)
                     player_no_num |= kw2
             player_no_num |= catch_all
 
         else:
             player_no_num = catch_all
-        player_no_num = (player_no_num).setResultsName(constants.PARSING_PLAYER.NAME)
         player = (pp.Word(pp.nums).setResultsName(constants.PARSING_PLAYER.NUMBER) + \
             player_no_num).setResultsName(constants.PARSING.PLAYER)
-
 
         #===========================================================================
         # General Parser Items
@@ -109,7 +107,7 @@ class PointStreakParser:
         picked_off = pp.CaselessLiteral("PO").setResultsName(constants.PARSING_OUTS.PICK_OFF)
         sacrifice_hit = pp.CaselessLiteral("SH").setResultsName(constants.PARSING_OUTS.SACRIFICE)
         dropped_third_strike = (pp.CaselessLiteral("KS")).setResultsName(constants.PARSING_OUTS.DROPPED_THIRD)
-        caught_stealing = (pp.CaselessLiteral("CS")).setResultsName(constants.PARSING_OUTS.CAUGHT_STEALING)
+        caught_stealing = (pp.Keyword("caught stealing: CS", caseless=True) | pp.CaselessLiteral("CS")).setResultsName(constants.PARSING_OUTS.CAUGHT_STEALING)
         strike_out = ((pp.Keyword("Strike Out", caseless=True) +
                        pp.Optional(pp.Keyword("swinging")).setResultsName(constants.PARSING_OUTS.SWINGING)) | \
                       (pp.CaselessLiteral("K") + pp.Optional(double_play))
@@ -140,11 +138,12 @@ class PointStreakParser:
                     foul_fly_out_uncommon
 
         out_description = (left_paren +
-                           pp.OneOrMore(possibles | pp.Word(pp.alphanums + ':') | (left_paren + pp.Word(pp.alphanums + ':-') + right_paren)) +
+                           pp.OneOrMore(possibles | pp.Word(pp.alphanums + ':') | \
+                           (left_paren + pp.Word(pp.alphanums + ':-') + right_paren)) +
                            right_paren).setResultsName(constants.PARSING.DESCRIPTION)
 
-        putout = (player + pp.Keyword("putout", caseless=True) + pp.Optional(out_description)).setParseAction(self.gamewrap.put_out) + pp.Keyword("for out number") + pp.Word(pp.nums)
-
+        putout = (player + pp.Keyword("putout", caseless=True) + pp.Optional(out_description) + pp.Keyword("for out number") + pp.Word(pp.nums)).setParseAction(self.gamewrap.put_out)
+        import pdb; pdb.set_trace()
         #===============================================================================
         # Advancing
         #===============================================================================
@@ -252,6 +251,7 @@ class PointStreakParser:
                      pp.Word(pp.alphanums).setResultsName(constants.PARSING.BASE) + pp.Word(pp.alphanums) + period
         runner_sub.setParseAction(self.gamewrap.parse_offensive_sub)
         subs = defensive_sub | dh_sub | pitching_sub | offensive_sub | runner_sub
+
         #===========================================================================
         # Summary
         #===========================================================================
