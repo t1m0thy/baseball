@@ -1,3 +1,7 @@
+import os
+BASE_DIR = os.path.dirname(__file__)
+CONTAINER_PATH = os.path.join(BASE_DIR, "../json_games")
+
 class PITCH_CHARS:
     FOLLOWING_PICKOFF_THROW_BY_THE_CATCHER = '+'
     FOLLOWING_PITCH_WAS_BLOCKED_BY_THE_CATCHER = '*'
