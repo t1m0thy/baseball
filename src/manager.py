@@ -4,20 +4,22 @@ import logging
 logger = logging.getLogger("manager")
 
 import pyparsing as pp
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 import gamestate
 import gameinfo
-
 import pointstreakparser as psp
 import pointstreakscraper as pss
 from models.playerinfo import PlayerInfo
 
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from models import event
 from models import playerinfo
 from models import gameinfomodel
 from models import teaminfomodel
+
+from constants import BASE_DIR, CONTAINER_PATH
+from gamecontainer import GameContainer
 
 
 CHECKED_PLAYERS = {}
@@ -35,6 +37,19 @@ def find_new_player_id(session, base_name):
 
 
 def import_game(gameid, cache_path=None, game=None, session=None):
+    try:
+        gc = GameContainer(CONTAINER_PATH, gameid)
+    except IOError:
+        gc = scrape_to_container(gameid, cache_path, session)
+    return parse_from_container(gc, game, session)
+
+
+def scrape_to_container(gameid, cache_path=None, session=None):
+    """
+    scrape and clean stuff up to save in a GameContainer which is just a shell to hold all needed data for parsing
+
+    the container allows us to have a file that we can manually repair and reparse in the case of scoring errors
+    """
     gameid = str(gameid)
 
     scraper = pss.PointStreakScraper(gameid, cache_path)
@@ -46,8 +61,9 @@ def import_game(gameid, cache_path=None, game=None, session=None):
     home = scraper.home_team()
     away = scraper.away_team()
 
-    for team_name in (home, away):
-        session.query(teaminfomodel.TeamInfo).filter_by(FULL_NAME=team_name)
+    if session:
+        for team_name in (home, away):
+            session.query(teaminfomodel.TeamInfo).filter_by(FULL_NAME=team_name)
 
     game_info = gameinfo.GameInfo(gameid)
     game_info.set_game_info(scraper.game_info)
@@ -99,23 +115,18 @@ def import_game(gameid, cache_path=None, game=None, session=None):
                     #m = player.to_model(player_models[0])  # update existing model
                     #session.merge(m)
                 CHECKED_PLAYERS[(player.name.first(), player.name.last(), player.team_id)] = player.name.id()
-
-    if game is None:
-        game = gamestate.GameState()
-
-    game.home_team_id = home
-    game.visiting_team = away
-    game.game_id = gameid
-
-    game.set_away_lineup(away_starting_lineup)
-    game.set_home_lineup(home_starting_lineup)
-
-    game.set_away_roster(away_roster)
-    game.set_home_roster(home_roster)
-
+        session.commit()
     #=======================================================================
-    # Parse plays
+    # Move into game container
     #=======================================================================
+
+    gc = GameContainer(CONTAINER_PATH, gameid, away, home)
+
+    gc.set_away_lineup(away_starting_lineup)
+    gc.set_home_lineup(home_starting_lineup)
+
+    gc.set_away_roster(away_roster)
+    gc.set_home_roster(home_roster)
 
     if hasattr(scraper, "name_spelling_corrections_dict"):
         name_spell_corrections = scraper.name_spelling_corrections_dict()
@@ -123,37 +134,86 @@ def import_game(gameid, cache_path=None, game=None, session=None):
         def _FS(s):
             for bad, good in name_spell_corrections.items():
                 s = re.sub(bad, good, s, flags=re.IGNORECASE)
-            return s.replace("  ", " ")
+            s = s.replace("  ", " ").replace("_apos;", '\'').replace("&apos;", '\'')
+            s = s.replace("<span class=\"score\">Scores</span>", "Scores")
+            s = s.replace("<span class=\"earned\">Earned</span>", "Earned")
+            s = s.replace("<span class=\"unearned\">Unearned</span>", "Unearned")
+            return s
+
     else:
         def _FS(s):
-            return s.replace("  ", " ")
+            s = s.replace("  ", " ").replace("_apos;", '\'').replace("&apos;", '\'')
+            s = s.replace("<span class=\"score\">Scores</span>", "Scores")
+            s = s.replace("<span class=\"earned\">Earned</span>", "Earned")
+            s = s.replace("<span class=\"unearned\">Unearned</span>", "Unearned")
+            return s
+
+
+
+
+    for half in scraper.halfs():
+        gc.new_half()
+        for raw_event in half.raw_events():
+            if raw_event.is_sub():
+                gc.add_sub(raw_event.title(), _FS(raw_event.text()))
+            else:
+                gc.add_event(raw_event.title(), _FS(raw_event.text()), _FS(raw_event.batter()))
+
+
+    gc.save()
+    if scraper.critical_errors:
+        raise StandardError("Scraper finished with critical errors.  GameContainer was saved for attempted repairs")
+    return gc
+
+
+def parse_from_container(gc, game=None, session=None):
+    ########################################################################
+
+    if game is None:
+        game = gamestate.GameState()
+
+    game.home_team_id = gc.home_team
+    game.visiting_team = gc.away_team
+    game.game_id = gc.gameid
+
+    game.set_away_lineup(gc.away_lineup)
+    game.set_home_lineup(gc.home_lineup)
+
+    game.set_away_roster(gc.away_roster)
+    game.set_home_roster(gc.home_roster)
+
+    #=======================================================================
+    # Parse plays
+    #=======================================================================
+
+
     # pass game to parser
     #TODO: the game wrapper for point streak should be instanced here...
     # it might make sense to just instance a new parser for each game.
-    names_in_game = [p.name.replace("_apos;", '\'').replace("&apos;", '\'') for p in away_roster + home_roster]
+    names_in_game = [p.name for p in gc.away_roster + gc.home_roster]
     parser = psp.PointStreakParser(game, names_in_game)
 
-    for half in scraper.halfs():
+    for half in gc.halfs():
         game.new_half()
-        for raw_event in half.raw_events():
+        for event_info in half:
             try:
-                if not raw_event.is_sub():
-                    game.new_batter(_FS(raw_event.batter()))
-                logger.debug("Parsing: {}".format(_FS(raw_event.text())))
-                parser.parse_event(_FS(raw_event.text()))
+                if "sub" not in event_info:
+                    game.new_batter(event_info["batter"])
+                logger.debug("Parsing: {}".format(event_info["text"]))
+                parser.parse_event(event_info["text"])
             except pp.ParseException, pe:
                 try:
-                    logger.critical("{}: {}\n{}".format(raw_event.title(),
+                    logger.critical("{}: {}\n{}".format(event_info["title"],
                                                         game.inning_string(),
                                                         pe.markInputline()))
                 except:
-                    logger.error("possible source: {}".format(_FS(raw_event.text())))
+                    logger.error("possible source: {}".format(event_info["text"]))
                 raise
             except:
                 try:
                     logger.critical("At {}".format(game.inning_string()))
                 except:
-                    logger.error("possible source: {}".format(_FS(raw_event.text())))
+                    logger.error("possible source: {}".format(event_info["text"]))
                 raise  # StandardError("Error with event: {}".format(raw_event.text()))
     game.set_previous_event_as_game_end()
 
