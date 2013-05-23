@@ -17,7 +17,7 @@ class Name(str):
             if ',' in name:
                 last, first = name.split(',', 1)
                 name = first.strip() + ' ' + last.strip()
-            name = " ".join([word.capitalize() for word in name.split(" ")])
+            name = " ".join([word.capitalize() for word in name.split(" ") if word != ''])
         except AttributeError:
             pass
         self._id = None
@@ -37,7 +37,7 @@ class Name(str):
         self._id = _id
 
     def __eq__(self, other):
-        if self.lower() == str(other).strip().lower():
+        if self.lower() == Name(str(other)).lower():
             return True
         if self.id() is not None:
             if self.id() == str(other):

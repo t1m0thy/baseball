@@ -123,10 +123,10 @@ def import_game(gameid, cache_path=None, game=None, session=None):
         def _FS(s):
             for bad, good in name_spell_corrections.items():
                 s = re.sub(bad, good, s, flags=re.IGNORECASE)
-            return s
+            return s.replace("  ", " ")
     else:
         def _FS(s):
-            return s
+            return s.replace("  ", " ")
     # pass game to parser
     #TODO: the game wrapper for point streak should be instanced here...
     # it might make sense to just instance a new parser for each game.
