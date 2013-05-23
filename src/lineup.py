@@ -2,7 +2,7 @@ from constants import POSITIONS, DH, P, POSITION_LOOKUP, LEFT, RIGHT, UNKNOWN, S
 import difflib
 import itertools
 from models import playerinfo
-
+from collections import OrderedDict
 
 class LineupError(Exception):
     pass
@@ -17,7 +17,7 @@ class Name(str):
             if ',' in name:
                 last, first = name.split(',', 1)
                 name = first.strip() + ' ' + last.strip()
-            name = " ".join([word.capitalize() for word in name.split(" ") if word != ''])
+            name = " ".join([word[0].upper() + word[1:] for word in name.split(" ") if word != ''])
         except AttributeError:
             pass
         self._id = None
@@ -127,6 +127,29 @@ class Player:
 
         #TODO: add throwing hand vs. batting hand
         #TODO: add switch_hitter flag
+
+    def as_odict(self):
+        out = OrderedDict()
+        for attr in ["name",
+                     "iddict",
+                     "number",
+                     "order",
+                     "position",
+                     "bat_hand",
+                     "throw_hand",
+                     "birthday",
+                     "college_year",
+                     "college_name",
+                     "draft_status",
+                     "height",
+                     "weight",
+                     "team_id",
+                     "starter",
+                     "starting_position",
+                     "starting_order"]:
+            out[attr] = getattr(self, attr)
+        out.update(vars(self))
+        return out
 
     def set_name(self, name):
         self.name = Name(name)
