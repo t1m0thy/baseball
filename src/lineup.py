@@ -135,6 +135,7 @@ class Player:
                      "number",
                      "order",
                      "position",
+                     "all_positions",
                      "bat_hand",
                      "throw_hand",
                      "birthday",
