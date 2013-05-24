@@ -4,6 +4,7 @@ import gamestate
 import logging
 
 logger = logging.getLogger("gamewrapper")
+
 class GameWrapper:
     """
     GameWrap.  This class is a wrapper around the gamestate class.
