@@ -26,3 +26,22 @@ def setupRootLogger(level):
     root.addHandler(console)
     root.setLevel(intlevel)
     return root
+
+
+class GameContextFilter(logging.Filter):
+    """
+    This is a filter which injects contextual information into the log.
+
+    """
+
+    def __init__(self):
+        logging.Filter.__init__(self)
+        self.inning = 0
+        self.is_bottom = 0
+        self.event_num = 0
+
+    def filter(self, record):
+        record.inning = self.inning
+        record.is_bottom = self.is_bottom
+        record.event_num = self.event_num
+        return True

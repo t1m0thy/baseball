@@ -19,8 +19,9 @@ from models import gameinfomodel
 from models import teaminfomodel
 
 from constants import BASE_DIR, CONTAINER_PATH
-from gamecontainer import GameContainer
+from gamecontainer import GameContainer, GameContainerLogHandler
 
+from setuplogger import GameContextFilter
 
 CHECKED_PLAYERS = {}
 
@@ -122,6 +123,7 @@ def scrape_to_container(gameid, cache_path=None, session=None):
 
     gc = GameContainer(CONTAINER_PATH, gameid, away, home)
 
+    gc.url = pss.make_html_url(gameid)
     gc.set_away_lineup(away_starting_lineup)
     gc.set_home_lineup(home_starting_lineup)
 
@@ -167,65 +169,84 @@ def scrape_to_container(gameid, cache_path=None, session=None):
 
 
 def parse_from_container(gc, game=None, session=None):
-    ########################################################################
 
     if game is None:
         game = gamestate.GameState()
 
-    game.home_team_id = gc.home_team
-    game.visiting_team = gc.away_team
-    game.game_id = gc.gameid
+    # setup log filter to add contextual info to logs
+    game_context_log_filter = GameContextFilter()
+    logger.addFilter(game_context_log_filter)
+    game.logger.addFilter(game_context_log_filter)  # will add context (current inning etc) to the error logs
+    gc_handler = GameContainerLogHandler(gc)
+    game.logger.addHandler(gc_handler)  # will ensure that errors get inserted into container
+    logger.addHandler(gc_handler)
+    try:
+        game.home_team_id = gc.home_team
+        game.visiting_team = gc.away_team
+        game.game_id = gc.gameid
 
-    game.set_away_lineup(gc.away_lineup)
-    game.set_home_lineup(gc.home_lineup)
+        game.set_away_lineup(gc.away_lineup)
+        game.set_home_lineup(gc.home_lineup)
 
-    game.set_away_roster(gc.away_roster)
-    game.set_home_roster(gc.home_roster)
+        game.set_away_roster(gc.away_roster)
+        game.set_home_roster(gc.home_roster)
 
-    #=======================================================================
-    # Parse plays
-    #=======================================================================
+        #=======================================================================
+        # Parse plays
+        #=======================================================================
 
 
-    # pass game to parser
-    #TODO: the game wrapper for point streak should be instanced here...
-    # it might make sense to just instance a new parser for each game.
-    names_in_game = [p.name for p in gc.away_roster + gc.home_roster]
-    parser = psp.PointStreakParser(game, names_in_game)
+        # pass game to parser
+        #TODO: the game wrapper for point streak should be instanced here...
+        # it might make sense to just instance a new parser for each game.
+        names_in_game = [p.name for p in gc.away_roster + gc.home_roster]
+        parser = psp.PointStreakParser(game, names_in_game)
 
-    for half in gc.halfs():
-        game.new_half()
-        for event_info in half:
-            try:
-                if "sub" not in event_info:
-                    game.new_batter(event_info["batter"])
-                logger.debug("Parsing: {}".format(event_info["text"]))
-                parser.parse_event(event_info["text"])
-            except pp.ParseException, pe:
+        for half in gc.halfs():
+            game.new_half()
+            game_context_log_filter.inning = game.inning
+            game_context_log_filter.is_bottom = bool(game.half_inning)
+            game_context_log_filter.event_num = 0
+            for event_info in half:
                 try:
-                    logger.critical("{}: {}\n{}".format(event_info["title"],
-                                                        game.inning_string(),
-                                                        pe.markInputline()))
-                except:
-                    logger.error("possible source: {}".format(event_info["text"]))
-                raise
-            except:
-                try:
-                    logger.critical("At {}".format(game.inning_string()))
-                except:
-                    logger.error("possible source: {}".format(event_info["text"]))
-                raise  # StandardError("Error with event: {}".format(raw_event.text()))
-    game.set_previous_event_as_game_end()
+                    if "batter" in event_info:
+                        game.new_batter(event_info["batter"])
+                    logger.debug("Parsing: {}".format(event_info["text"]))
+                    parser.parse_event(event_info["text"])
+                except pp.ParseException, pe:
+                    try:
+                        logger.critical("PARSE ERROR - " + pe.markInputline(),
+                                        extra=dict(title=event_info["title"],
+                                                    inning=game.inning,
+                                                    bottom=game.half_inning
+                                                    )
+                                        )
+                    except:
+                        logger.error("Error logging error! Possible source: {}".format(event_info["text"]))
+                    raise
+                except Exception, e:
+                    try:
+                        logger.critical(str(e))
+                    except:
+                        logger.error("Error loggin error!  Possible source: {}".format(event_info["text"]))
+                    raise  # StandardError("Error with event: {}".format(raw_event.text()))
+                game_context_log_filter.event_num += 1
 
-    for p in game.home_roster + game.away_roster:
-        for stat in ["AB", "R", "H", "RBI", "BB", "SO"]:
-            if p.bat_stats.get(stat, 0) != p.verify_bat_stats.get(stat, 0):
-                logger.error(" counted {} {} does not equal reported {} {} for player {}".format(stat, p.bat_stats.get(stat, 0), stat, p.verify_bat_stats.get(stat, 0), p.name))
+        game.set_previous_event_as_game_end()
 
-    if session is not None:
-        for e in game.events():
-            session.add(e)
-        session.commit()
+        for p in game.home_roster + game.away_roster:
+            for stat in ["AB", "R", "H", "RBI", "BB", "SO"]:
+                if p.bat_stats.get(stat, 0) != p.verify_bat_stats.get(stat, 0):
+                    logger.error(" counted {} {} does not equal reported {} {} for player {}".format(stat, p.bat_stats.get(stat, 0), stat, p.verify_bat_stats.get(stat, 0), p.name))
+
+        if session is not None:
+            for e in game.events():
+                session.add(e)
+            session.commit()
+    finally:
+        gc.save()
+        game.logger.removeFilter(game_context_log_filter)
+        logger.removeFilter(game_context_log_filter)
     return game
 
 
