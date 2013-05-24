@@ -55,16 +55,8 @@ if options.game is None:
         finally:
             jm.save()
 else:
-    try:
-        process_one(options.game)
-        print "PARSING COMPLETE"
-    except lineup.LineupError:
-        print "PROBLEM WITH {}".format(pss.make_xml_seq_url(options.game, 0))
-        raise
+    process_one(options.game)
 
-    except:
-        print "PROBLEM WITH {}".format(pss.make_html_url(options.game))
-        raise
 #===============================================================================
 # Report Summary
 #===============================================================================
