@@ -7,7 +7,6 @@ Therefore, at any time, this class may be added as a line in a SQL event databas
 """
 
 import logging
-logger = logging.getLogger("gamestate")
 import constants
 
 from bases import Bases
@@ -43,6 +42,8 @@ PLAYER_ID_ATTRS = ["batter",
 
 class GameState:
     def __init__(self):
+        self.logger = logging.getLogger("gamestate")
+
         self.game_id = None
         self.visiting_team = None
 
@@ -376,7 +377,7 @@ class GameState:
         self.base_state_at_end_of_play = self._bases.code()
         self._last_event = self._get_state_as_event_model()
         self.event_list.append(self._last_event)
-        logger.debug(">-- APPEND EVENT --<")
+        self.logger.debug(">-- APPEND EVENT --<")
         self._apply_pending_base_runner_positions()
         self._reset_play_flags()
 
@@ -403,7 +404,7 @@ class GameState:
             for fate_attribute in fate_attribute_names:
                 fate_id = self.get_event_value(e, fate_attribute)
                 if fate_id != 0:
-                    logger.debug("looking up fate id for {} = {}".format(fate_attribute, fate_id))
+                    self.logger.debug("looking up fate id for {} = {}".format(fate_attribute, fate_id))
                     self.set_event_value(e, fate_attribute, self._bases.fate_for(fate_id))
             subtract_runs = self.get_event_value(e, "runs_scored_in_half_inning_after_this_event")
             runs_scored_after = subtract_runs + self.runs_scored_in_this_half_inning
@@ -419,11 +420,11 @@ class GameState:
 
     def _increment_bat_stat(self, stat):
         self._current_batting_lineup().find_player_by_name(self.batter).bat_stats[stat] += 1
-        logger.info("{} awarded {}".format(self.batter, stat))
+        self.logger.info("{} awarded {}".format(self.batter, stat))
 
     def _increment_runner_stat(self, player_name, stat):
         self._current_batting_lineup().find_player_by_name(player_name).bat_stats[stat] += 1
-        logger.info("{} awarded {}".format(player_name, stat))
+        self.logger.info("{} awarded {}".format(player_name, stat))
 
     def _allow_rbi(self):
         # tally any already scored before RBI option acknowledged
@@ -439,12 +440,12 @@ class GameState:
             self.batting_lineup = self.home_lineup
             self.fielding_lineup = self.away_lineup
             self._current_place_in_order = self._home_place_in_batting_order
-            logger.info("home lineup starts at order {}".format(self._current_place_in_order))
+            self.logger.info("home lineup starts at order {}".format(self._current_place_in_order))
         else:
             self.batting_lineup = self.away_lineup
             self.fielding_lineup = self.home_lineup
             self._current_place_in_order = self._away_place_in_batting_order
-            logger.info("away lineup starts at order {}".format(self._current_place_in_order))
+            self.logger.info("away lineup starts at order {}".format(self._current_place_in_order))
 
         self._update_fielders()
 
@@ -472,12 +473,12 @@ class GameState:
                     new_player = possibles_dict[position]
                     new_player.set_position(position)
                     fielder_pos_dict[position] = new_player.name
-                    logger.warning("Automatic Field Position Assignment: {} to {}".format(new_player.name, new_player.position))
+                    self.logger.warning("Automatic Field Position Assignment: {} to {}".format(new_player.name, new_player.position))
             else:
                 for position in missing:
                     self._missing_fielders.append(position)
                     fielder_pos_dict[position] = '?'
-                    logger.warning("{}: Missing Fielder for {}".format(self.inning_string(), position))
+                    self.logger.warning("{}: Missing Fielder for {}".format(self.inning_string(), position))
 
         self.catcher = fielder_pos_dict['C']
         self.first_baseman = fielder_pos_dict['1B']
@@ -524,13 +525,13 @@ class GameState:
                 if self._home_place_in_batting_order > 9:
                     self._home_place_in_batting_order = 1
                 self._current_place_in_order = self._home_place_in_batting_order
-                logger.info("home team at order #{}".format(self._current_place_in_order))
+                self.logger.info("home team at order #{}".format(self._current_place_in_order))
             else:
                 self._away_place_in_batting_order += 1
                 if self._away_place_in_batting_order > 9:
                     self._away_place_in_batting_order = 1
                 self._current_place_in_order = self._away_place_in_batting_order
-                logger.info("away team at order #{}".format(self._current_place_in_order))
+                self.logger.info("away team at order #{}".format(self._current_place_in_order))
             # increment the atbat count
 
             self._current_batting_lineup().find_player_by_name(self.batter).plate_appearances += 1
@@ -580,6 +581,8 @@ class GameState:
         self.event_text = ''
         self._advancing_event_text = ''
         self.event_number += 1
+        self.batted_ball_type = None
+        self.bunt_flag = None
 
         self.number_of_runs_on_play = 0
         self.id_of_player_fielding_batted_ball = None
@@ -594,7 +597,7 @@ class GameState:
         """
         #moved = self._bases.force_runners()
         #for runner, base in moved:
-        #    logger.warning("{} was forced to {} base to resolve base position that was not explicitly given".format(runner, base))
+        #    self.logger.warning("{} was forced to {} base to resolve base position that was not explicitly given".format(runner, base))
         a, b, c = self._bases.runner_names()
         self.runner_on_first = a
         self.runner_on_second = b
@@ -699,46 +702,46 @@ class GameState:
             except KeyError:
                 if batter_player.order is None:
                     batter_player.order = self._current_place_in_order
-                    logger.warning("{} order auto set to {}".format(batter_player.name, batter_player.order))
+                    self.logger.warning("{} order auto set to {}".format(batter_player.name, batter_player.order))
             assert(batter_player.order == self._current_place_in_order)
-            logger.info("#{} {} to Bat".format(batter_player.number, batter_player.name))
+            self.logger.info("#{} {} to Bat".format(batter_player.number, batter_player.name))
         except KeyError:
             # Player not in lineup
-            logger.warning(player_name + " not found in lineup for atbat")
+            self.logger.warning(player_name + " not found in lineup for atbat")
             try:
                 batter_player = self._current_batting_roster().find_player_by_name(player_name)
                 try:
                     # there is someone to replace
                     replacing_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
-                    logger.warning("Used roster for auto-substitution of %s for %s" % (batter_player.name, replacing_player.name))
+                    self.logger.warning("Used roster for auto-substitution of %s for %s" % (batter_player.name, replacing_player.name))
                     self.offensive_sub(batter_player.name, replacing_player.name)
 
                 except KeyError:
                     # there is nobody to replace at this order spot
-                    logger.warning("No one found to replace at order location {}".format(self._current_place_in_order))
+                    self.logger.warning("No one found to replace at order location {}".format(self._current_place_in_order))
                     self._current_batting_lineup().add_player(batter_player)
 
             except KeyError:
                 raise StandardError("Auto Replace Failed. %s not found in roster" % player_name)
         except AssertionError:
             # Player order doesn't match expected order
-            logger.warning("%s at order %s doesn't match expected order %s" %
+            self.logger.warning("%s at order %s doesn't match expected order %s" %
                            (batter_player.name, batter_player.order, self._current_place_in_order))
             if batter_player.plate_appearances == 0:
                 try:
                     old_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
-                    logger.info("found old player {}".format(old_player.name))
+                    self.logger.info("found old player {}".format(old_player.name))
                     print batter_player.is_pending_sub(), batter_player.order
                     if old_player.plate_appearances == 0 or batter_player.is_pending_sub() or batter_player.order is None:
                         old_player.order = batter_player.order
                         batter_player.order = self._current_place_in_order
                         self._current_batting_lineup().remove_player(old_player.name)
-                        logger.warning("Used roster for auto-order swap of %s for %s" %
+                        self.logger.warning("Used roster for auto-order swap of %s for %s" %
                                        (batter_player.name, old_player.name))
                     else:
                         raise
                 except KeyError:
-                    logger.warning("No player found to replace at position {} in the order.".format(self._current_place_in_order))
+                    self.logger.warning("No player found to replace at position {} in the order.".format(self._current_place_in_order))
                     batter_player.order = self._current_place_in_order
 
             else:
@@ -769,10 +772,6 @@ class GameState:
             self.pinch_hit_flag = True
         else:
             self.pinch_hit_flag = False
-
-    def new_inning(self):
-        self.inning += 1
-        self.new_half()
 
     def new_half(self):
         self._update_player_fates_for_half()
@@ -810,7 +809,7 @@ class GameState:
         # take place before we assign the new positions and confirm all positions
         # are accounted for to be performed prior to the first batter
 
-        logger.info("====================== {} =====================".format(self.inning_string()))
+        self.logger.info("====================== {} =====================".format(self.inning_string()))
 
     #------------------------------------------------------------------------------
     # PLAY ERRORS
@@ -837,19 +836,19 @@ class GameState:
         self._record_any_pending_runner_event()
         self.balls += 1
         self.pitch_sequence += constants.PITCH_CHARS.BALL
-        logger.debug("Ball")
+        self.logger.debug("Ball")
 
     def pitch_called_strike(self):
         self._record_any_pending_runner_event()
         self.strikes += 1
         self.pitch_sequence += constants.PITCH_CHARS.CALLED_STRIKE
-        logger.debug("Called Strike")
+        self.logger.debug("Called Strike")
 
     def pitch_swinging_strike(self):
         self._record_any_pending_runner_event()
         self.strikes += 1
         self.pitch_sequence += constants.PITCH_CHARS.SWINGING_STRIKE
-        logger.debug("Swinging Strike")
+        self.logger.debug("Swinging Strike")
 
     def pitch_foul(self, dropped=False, error=None, error_position=0):
         self._record_any_pending_runner_event()
@@ -860,7 +859,7 @@ class GameState:
             self.error(error_position, 'F')
         # TODO: how could I include this FOUL_ERROR?
         #self.event_type = constants.EVENT_CODE.FOUL_ERROR
-        logger.debug("Foul")
+        self.logger.debug("Foul")
 
     def pitch_pickoff_attempt(self, base, thrower_position, catcher_position):
         """
@@ -870,7 +869,7 @@ class GameState:
         base: 1, 2, or 3: the base where PO throw went
         """
         self._record_any_pending_runner_event()
-        logger.debug("Pickoff at {}, {} to {}".format(base, thrower_position, catcher_position))
+        self.logger.debug("Pickoff at {}, {} to {}".format(base, thrower_position, catcher_position))
         base_num = constants.BASE_LOOKUP[base]
         if base_num not in [1, 2, 3]:
             raise StandardError("pickoff base not a valid argument (1, 2, or 3)")
@@ -887,7 +886,7 @@ class GameState:
         self.outs += 1
         self.outs_on_play += 1
 
-        logger.info("{} Put Out.".format(player_name))
+        self.logger.info("{} Put Out.".format(player_name))
 
         if self.batter != player_name:
             self._bases.remove(player_name)
@@ -934,7 +933,7 @@ class GameState:
         # catch case of fielders coming in as a string of digits, for example ['543']
         if len(fielders) == 1 and len(str(fielders)) > 1:
             fielders = list(str(fielders[0]))
-        logger.info("Fielders {}".format(fielders))
+        self.logger.info("Fielders {}".format(fielders))
         fielders = [self.lookup_position_num(pos) for pos in fielders]
         self.fielded_by = fielders[0]
         all_fielders = self._current_fielding_lineup()
@@ -952,14 +951,14 @@ class GameState:
                         d = {"name": player.name,
                              "to_p": position,
                              "from_p": player.position}
-                        logger.warning("Automatically Moving {name} to position {to_p} from position {from_p}".format(**d))
+                        self.logger.warning("Automatically Moving {name} to position {to_p} from position {from_p}".format(**d))
                         player.position = position
                 fielder = all_fielders.find_player_by_position(self.lookup_position(self.fielded_by))
                 fielder_name = fielder.name
             else:
                 print options
                 print all_fielders
-                logger.error("Unable to determine the fielder to credit at position {}.  will credit a question mark '?'".format(credit_position))
+                self.logger.error("Unable to determine the fielder to credit at position {}.  will credit a question mark '?'".format(credit_position))
                 fielder_name = "?"
 
         play_string = ''.join([str(p) for p in fielders[-2:]])
@@ -1004,7 +1003,7 @@ class GameState:
         self.event_text += "X" + '(' + ''.join([str(p) for p in fielders]) + ')'
         self._set_event_type(constants.EVENT_CODE.GENERIC_OUT, player_name)
         self._out(player_name)
-        logger.debug("{} thrown out {}".format(player_name, fielders))
+        self.logger.debug("{} thrown out {}".format(player_name, fielders))
 
     def out_caught_stealing(self, runner_name, fielders=[], double_play=False):
         self._record_any_pending_runner_event()
@@ -1084,9 +1083,10 @@ class GameState:
         self._credit_fielders_with_out(player_name, [fielder_position])
         self._out(self.batter)
         self.event_text += str(fielder_position) + "/F"  # TODO: KEEP GOING ON THE EVENT_STRING
+        self.batted_ball_type = 'F'
 
         self._set_event_type(constants.EVENT_CODE.GENERIC_OUT, player_name)
-        logger.debug("{} flies out to {}. sac = {}".format(player_name, fielder_position, sacrifice))
+        self.logger.debug("{} flies out to {}. sac = {}".format(player_name, fielder_position, sacrifice))
         if not sacrifice:
             self._batting_event_is_official = True
         self._allow_rbi()
@@ -1101,7 +1101,7 @@ class GameState:
                                                                                                self.batter))
         self._credit_fielders_with_out(player_name, [2])
         self._out(self.batter)
-        logger.debug("Strike out for {outs} outs".format(outs=self.outs))
+        self.logger.debug("Strike out for {outs} outs".format(outs=self.outs))
         self.event_text += "K"
         self._set_event_type(constants.EVENT_CODE.STRIKEOUT, player_name)
         self._increment_bat_stat("SO")
@@ -1123,7 +1123,7 @@ class GameState:
         self._credit_fielders_with_out(player_name, [fielder_position])
         self.event_text += str(fielder_position)  # TODO: does unassisted have a modifier?
         self._set_event_type(constants.EVENT_CODE.GENERIC_OUT, player_name)
-        logger.debug("Unassisted out for {outs} outs".format(outs=self.outs))
+        self.logger.debug("Unassisted out for {outs} outs".format(outs=self.outs))
 
     def out_popup(self, player_name, fielder_position, foul=False, sacrifice=False):
         self._record_any_pending_runner_event()
@@ -1143,7 +1143,7 @@ class GameState:
             self._batting_event_is_official = True
         self._allow_rbi()
         self._first_batter_event = False
-        logger.debug("Popup out for {outs} outs".format(outs=self.outs))
+        self.logger.debug("Popup out for {outs} outs".format(outs=self.outs))
 
     #------------------------------------------------------------------------------
     # ADVANCE
@@ -1163,7 +1163,7 @@ class GameState:
         base = constants.BASE_LOOKUP[base]
         extra_bases = base - 1
         if extra_bases:
-            logger.info("Single plus {} extra base".format(extra_bases))
+            self.logger.info("Single plus {} extra base".format(extra_bases))
         self._advance_player(player_name, base)
         self.hit_value = 1
         self._increment_bat_stat("H")
@@ -1352,12 +1352,12 @@ class GameState:
         try:
             credit_batter = self.batting_lineup.find_player_by_number(batter_number)
             if batter_number != current_batter.number:
-                logger.error("Advance recorded from batter number {} {} that is not current batter {}".format(batter_number,
+                self.logger.error("Advance recorded from batter number {} {} that is not current batter {}".format(batter_number,
                              credit_batter.name,
                              self.batter))
         except KeyError:
             credit_batter = None
-            logger.error("Attempt to credit batter number that's not in lineup: {}".format(batter_number))
+            self.logger.error("Attempt to credit batter number that's not in lineup: {}".format(batter_number))
 
         self._advance_player(player_name, base, credit_batter=credit_batter)
 
@@ -1399,7 +1399,7 @@ class GameState:
         This will make it easier to use this method with whatever parsing means we need
         """
         base_num = constants.BASE_LOOKUP[base]
-        logger.info("%s to %s" % (player_name, base_num))
+        self.logger.info("%s to %s" % (player_name, base_num))
 
         if base_num == 4 and not earned:
             destination_base_name = 5
@@ -1423,15 +1423,15 @@ class GameState:
             advance_string = self._bases.advance(player_name, destination_base_name)
             if advance_string.startswith("B"):
                 if self.batter != player_name:
-                    logger.warning("Player {} neither batter {} nor found on bases for advance to {}".format(player_name, self.batter, base))
+                    self.logger.warning("Player {} neither batter {} nor found on bases for advance to {}".format(player_name, self.batter, base))
                     raise StandardError("Lost Player")
             self._advancing_event_text += '.' + advance_string
         except AssertionError:
             d = {"name": player_name,
                  "new_base": destination_base_name,
                  "current_base": self._bases.get_runner_base(player_name)}
-            logger.error("Attempt to move {name} to base {new_base} when {name} is already at {current_base}".format(**d))
-        #logger.warning("Advancing {} to {}.  Player can not be found at bat or on base.  base state:\n{}".format(player_name, destination_base_name, self._bases.player_locations))
+            self.logger.error("Attempt to move {name} to base {new_base} when {name} is already at {current_base}".format(**d))
+        #self.logger.warning("Advancing {} to {}.  Player can not be found at bat or on base.  base state:\n{}".format(player_name, destination_base_name, self._bases.player_locations))
 
         if self.batter == player_name:
             self.fate_of_batter = self._bases.player_fate_id(self.batter)
@@ -1448,7 +1448,7 @@ class GameState:
         elif base_num == 4:
             self._score(error, credit_batter)
             self._increment_runner_stat(player_name, "R")
-        #logger.debug("runners now 1st %s, 2nd %s, 3rd, %s" % (self.runner_on_first, self.runner_on_second, self.runner_on_third))
+        #self.logger.debug("runners now 1st %s, 2nd %s, 3rd, %s" % (self.runner_on_first, self.runner_on_second, self.runner_on_third))
         if self.batter == player_name:
             self._increment_batting_order()
 
@@ -1463,12 +1463,12 @@ class GameState:
             else:
                 self._increment_bat_stat("RBI")
         # else:
-        #     logger.info("RBI not counted.  E = {}, DP = {}, WP = {}".format(on_error, self.double_play_flag, self.wild_pitch_flag))
+        #     self.logger.info("RBI not counted.  E = {}, DP = {}, WP = {}".format(on_error, self.double_play_flag, self.wild_pitch_flag))
         if self.bat_home_id:
             self.home_score += 1
         else:
             self.visitor_score += 1
-        logger.debug("Score now Home %s, Vis %s" % (self.home_score, self.visitor_score))
+        self.logger.debug("Score now Home %s, Vis %s" % (self.home_score, self.visitor_score))
 
     #------------------------------------------------------------------------------
     # SUBSTITUTIONS
@@ -1484,10 +1484,10 @@ class GameState:
                 current_vacancies = current_defense.missing_fielders()
                 if len(current_vacancies) == 1:
                     position = current_vacancies[0]
-                    logger.warning("Guessing at position {} of unspecified defensive sub {}".format(position, new_player.name))
+                    self.logger.warning("Guessing at position {} of unspecified defensive sub {}".format(position, new_player.name))
                 if position is None or position == '':
                     position = new_player.position
-                    logger.warning("Using known player position {} of unspecified defensive sub {}".format(position, new_player.name))
+                    self.logger.warning("Using known player position {} of unspecified defensive sub {}".format(position, new_player.name))
                 if position is None or position == '':
                     raise StandardError("Defensive Sub Error, no new position or replacement name")
             try:
@@ -1530,7 +1530,7 @@ class GameState:
             else:
 
                 new_player = self._current_fielding_roster().find_player_by_name(new_player_name)
-                logger.info("moving {} into lineup\n {}".format(new_player, str(current_defense)))
+                self.logger.info("moving {} into lineup\n {}".format(new_player, str(current_defense)))
                 # if new_player.order is None:
                 #     new_player.order = possible_remove_player.order
                 if position != '':
@@ -1546,7 +1546,7 @@ class GameState:
                     existing_player = self._current_fielding_roster().find_player_by_name(new_player.name)
                     existing_player.merge(new_player)
                     existing_player.set_pending_sub()
-                    logger.warn("{} already in lineup.".format(new_player.name))
+                    self.logger.warn("{} already in lineup.".format(new_player.name))
         self._update_position_attributes_with_player(self._current_fielding_roster().find_player_by_name(new_player_name))
 
     def _update_position_attributes_with_player(self, new_player):
@@ -1637,11 +1637,11 @@ class GameState:
                 try:
                     old_base = base_num
                     base_num = self._bases.replace_runner(new_player_name, removed_player.name)
-                    logger.warning("{} was not at {} base.  replaced at {}".format(removed_player.name,
+                    self.logger.warning("{} was not at {} base.  replaced at {}".format(removed_player.name,
                                                                                    old_base,
                                                                                    base_num))
                 except ValueError:
-                    logger.error("{} is not on base to replace".format(removed_player.name))
+                    self.logger.error("{} is not on base to replace".format(removed_player.name))
             if base_num == 1:
                 assert(self.runner_on_first == removed_player.name)
                 self.pinch_runner_on_first = True
