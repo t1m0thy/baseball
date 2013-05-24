@@ -3,6 +3,7 @@ a means to save games outside of their html state.
 
 """
 
+import logging
 import json
 import os
 from collections import OrderedDict
@@ -13,12 +14,14 @@ from lineup import Lineup, PlayerList, Player
 #  see: http://stackoverflow.com/questions/4402491/custom-json-sort-keys-order-in-python
 json.encoder.c_make_encoder = None
 
+ERROR_KEY = "process_errors"
 
 
 class GameContainer:
     def __init__(self, cache_path, gameid=None, away_team=None, home_team=None):
         assert(cache_path is not None)
         self.gameid = gameid
+        self.url = None
         self.home_team = home_team
         self.away_team = away_team
         self.list_of_halfs = []
@@ -26,6 +29,7 @@ class GameContainer:
         self.cache_path = cache_path
         if away_team is None:
             self.load()
+        self.errors = []
 
     def set_home_lineup(self, lineup):
         self.home_lineup = lineup
@@ -44,22 +48,31 @@ class GameContainer:
         self.current_half = self.list_of_halfs[-1]
 
     def add_event(self, title, text, batter):
-        self.current_half.append(dict(title=title, text=text, batter=batter, inning=(len(self.list_of_halfs)+ 1)/2.0))
+        self.current_half.append(OrderedDict(title=title, batter=batter, text=text, inning=(len(self.list_of_halfs)+ 1)/2.0))
 
     def add_sub(self, title, text):
-        self.current_half.append(dict(title=title, text=text, sub="_sub_", inning=(len(self.list_of_halfs)+ 1)/2.0))
+        self.current_half.append(OrderedDict(title=title, text=text, inning=(len(self.list_of_halfs)+ 1)/2.0))
 
     def save(self):
         d = OrderedDict()
         d["gameid"] = self.gameid
+        d["url"] = self.url
         d["home_team"] = self.home_team
         d["away_team"] = self.away_team
         d["home_lineup"] = [p.as_odict() for p in self.home_lineup]
-        d["away_lineup"] = [p.as_odict() for p in self.away_lineup]
         d["home_roster"] = [p.as_odict() for p in self.home_roster if p not in self.home_lineup]
+        d["away_lineup"] = [p.as_odict() for p in self.away_lineup]
         d["away_roster"] = [p.as_odict() for p in self.away_roster if p not in self.away_lineup]
         d["list_of_halfs"] = self.list_of_halfs
-
+        d["general_errors"] = []
+        for e in self.errors:
+            try:
+                half_index = int((e.get("inning") + 0.5 * int(e.get("bottom"))) * 2 - 2)
+                event_errors = d["list_of_halfs"][half_index][e.get("event_num")].get(ERROR_KEY, [])
+                event_errors.append(e.get("message"))
+                d["list_of_halfs"][half_index][e.get("event_num")][ERROR_KEY] = event_errors
+            except IndexError:
+                d["general_errors"].append(e.get("message"))
         with open(os.path.join(self.cache_path, "gc_{}.json".format(self.gameid)), 'w') as f:
             json.dump(d,
                       f,
@@ -67,10 +80,9 @@ class GameContainer:
                       indent=4,
                       separators=(', ', ': '))
 
-
-    def load(self):
+    def load(self, remove_errors=True):
         with open(os.path.join(self.cache_path, "gc_{}.json".format(self.gameid)), 'r') as f:
-            d = json.load(f)
+            d = json.load(f, object_pairs_hook=OrderedDict)
 
         self.away_lineup = Lineup()
         self.home_lineup = Lineup()
@@ -105,12 +117,42 @@ class GameContainer:
             self.away_roster.append(p)
 
         self.gameid = d["gameid"]
+        self.url = d.get("url")
         self.home_team = d["home_team"]
         self.away_team = d["away_team"]
         self.list_of_halfs = d["list_of_halfs"]
-        self.current_half = self.list_of_halfs[0]
+        if remove_errors:
+            for h in self.list_of_halfs:
+                for e in h:
+                    if ERROR_KEY in e:
+                        del(e[ERROR_KEY])
 
+        self.current_half = self.list_of_halfs[0]
 
     def halfs(self):
         for h in self.list_of_halfs:
             yield h
+
+    def log_error(self, inning, bottom, event_num, message):
+        self.errors.append(dict(inning=inning, bottom=bottom, event_num=event_num, message=message))
+
+
+class GameContainerLogHandler(logging.Handler):
+    """
+    A handler class which allows logs to get inserted into a game container
+    """
+    def __init__(self, game_container):
+        logging.Handler.__init__(self)
+        self.gc = game_container
+        formatter = logging.Formatter("%(levelname)s - %(message)s")
+        self.setFormatter(formatter)
+        self.setLevel(logging.WARN)
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            self.gc.log_error(record.inning, record.is_bottom, record.event_num, msg)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            self.handleError(record)
