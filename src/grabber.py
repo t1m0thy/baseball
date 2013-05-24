@@ -32,9 +32,6 @@ options = parser.parse_args()
 setuplogger.setupRootLogger(os.environ.get("SB_LOGLEVEL", options.log))
 logger = logging.getLogger("main")
 
-# this is a hack to get dotcloud print outpout into logs
-sys.stdout = sys.stderr
-
 
 def delete_game(session, gameid):
     events = session.query(Event).filter(Event.GAME_ID == gameid)
