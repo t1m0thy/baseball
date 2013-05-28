@@ -37,20 +37,17 @@ def find_new_player_id(session, base_name):
     raise StandardError("Could not find a unqiue id for base name {}".format(base_name))
 
 
-def import_game(gameid, cache_path=None, game=None, session=None):
+def import_game(gameid, cache_path=None, game=None, session=None, force_fresh=False):
     try:
+        if force_fresh:
+            raise IOError("Not actually an IOError.")
         gc = GameContainer(CONTAINER_PATH, gameid)
     except IOError:
         gc = scrape_to_container(gameid, cache_path, session)
     return parse_from_container(gc, game, session)
 
 
-def scrape_to_container(gameid, cache_path=None, session=None):
-    """
-    scrape and clean stuff up to save in a GameContainer which is just a shell to hold all needed data for parsing
-
-    the container allows us to have a file that we can manually repair and reparse in the case of scoring errors
-    """
+def setup_scraper(gameid, cache_path=None, session=None):
     gameid = str(gameid)
 
     scraper = pss.PointStreakScraper(gameid, cache_path)
@@ -117,52 +114,46 @@ def scrape_to_container(gameid, cache_path=None, session=None):
                     #session.merge(m)
                 CHECKED_PLAYERS[(player.name.first(), player.name.last(), player.team_id)] = player.name.id()
         session.commit()
+    return scraper, away_starting_lineup, home_starting_lineup, away_roster, home_roster
+
+def scrape_to_container(gameid, cache_path=None, session=None, save_container=True):
+    """
+    scrape and clean stuff up to save in a GameContainer which is just a shell to hold all needed data for parsing
+
+    the container allows us to have a file that we can manually repair and reparse in the case of scoring errors
+    """
+
+
+    scraper, away_starting_lineup, home_starting_lineup, away_roster, home_roster = setup_scraper(gameid, cache_path, session)
     #=======================================================================
     # Move into game container
     #=======================================================================
 
+    home = scraper.home_team()
+    away = scraper.away_team()
+
     gc = GameContainer(CONTAINER_PATH, gameid, away, home)
 
     gc.url = pss.make_html_url(gameid)
+
+
     gc.set_away_lineup(away_starting_lineup)
     gc.set_home_lineup(home_starting_lineup)
 
     gc.set_away_roster(away_roster)
     gc.set_home_roster(home_roster)
 
-    if hasattr(scraper, "name_spelling_corrections_dict"):
-        name_spell_corrections = scraper.name_spelling_corrections_dict()
-
-        def _FS(s):
-            for bad, good in name_spell_corrections.items():
-                s = re.sub(bad, good, s, flags=re.IGNORECASE)
-            s = s.replace("  ", " ").replace("_apos;", '\'').replace("&apos;", '\'')
-            s = s.replace("<span class=\"score\">Scores</span>", "Scores")
-            s = s.replace("<span class=\"earned\">Earned</span>", "Earned")
-            s = s.replace("<span class=\"unearned\">Unearned</span>", "Unearned")
-            return s
-
-    else:
-        def _FS(s):
-            s = s.replace("  ", " ").replace("_apos;", '\'').replace("&apos;", '\'')
-            s = s.replace("<span class=\"score\">Scores</span>", "Scores")
-            s = s.replace("<span class=\"earned\">Earned</span>", "Earned")
-            s = s.replace("<span class=\"unearned\">Unearned</span>", "Unearned")
-            return s
-
-
-
-
     for half in scraper.halfs():
         gc.new_half()
         for raw_event in half.raw_events():
             if raw_event.is_sub():
-                gc.add_sub(raw_event.title(), _FS(raw_event.text()))
+                gc.add_sub(raw_event.title(), raw_event.text())
             else:
-                gc.add_event(raw_event.title(), _FS(raw_event.text()), _FS(raw_event.batter()))
+                gc.add_event(raw_event.title(), raw_event.text(), raw_event.batter())
 
 
-    gc.save()
+    if save_container:
+        gc.save()
     if scraper.critical_errors:
         raise StandardError("Scraper finished with critical errors.  GameContainer was saved for attempted repairs")
     return gc
