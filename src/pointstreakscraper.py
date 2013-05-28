@@ -113,6 +113,9 @@ class PointStreakScraper(GameScraper):
 
         self._build_html_player_tables()
 
+        self.name_spell_corrections = self.name_spelling_corrections_dict()
+
+
     def home_team(self):
         """ return name of home team """
         return self.game_info["HomeTeam"]
@@ -125,7 +128,7 @@ class PointStreakScraper(GameScraper):
         """ iterator that returns HalfInning Objects through the game """
         halfs = [e for e in self.root.find(".//{*}PlayByPlay").getchildren()]
         for half in halfs:  # what a mouthful!
-            yield PSPHalfInningXML(half)
+            yield PSPHalfInningXML(half, self.name_spell_corrections)
 
 
     def starting_lineups(self):
@@ -421,18 +424,19 @@ class PointStreakScraper(GameScraper):
 
 
 class PSPHalfInningXML(HalfInning):
-    def __init__(self, etree):
+    def __init__(self, etree, name_spell_corrections={}):
         self._etree = etree
+        self._name_spell_corrections = name_spell_corrections
 
     def raw_events(self):
         for e in self._etree.getchildren():
             tag = e.tag.split("}")[-1]
             if tag != "Summary":
-                yield PSPRawEventXML(e)
+                yield PSPRawEventXML(e, self._name_spell_corrections)
 
 
 class PSPRawEventXML(RawEvent):
-    def __init__(self, element):
+    def __init__(self, element, name_spell_corrections={}):
         tag = element.tag.split("}")[-1]
         event_type, text, batter, number, sub_type = tag, element.text, element.attrib.get("Name"), element.attrib.get("Number"), element.attrib.get("Type")
         try:
@@ -446,6 +450,7 @@ class PSPRawEventXML(RawEvent):
         if sub_type is not None:
             text = sub_type + '. ' + text
         self._text = text
+        self.name_spell_corrections = name_spell_corrections
 
     def is_sub(self):
         return self._type == "Substitution"
@@ -454,7 +459,7 @@ class PSPRawEventXML(RawEvent):
         if self.is_sub():
             return StandardError("No batter for substitution event")
         else:
-            return self._batter_name.replace("&apos;", "'").replace("_apos;", "'")
+            return self._fix_spelling(self._batter_name)
 
     def batter_number(self):
         if self.is_sub():
@@ -463,15 +468,23 @@ class PSPRawEventXML(RawEvent):
             return self._batter_number
 
     def text(self):
-        return self._text.replace("&apos;", "'").replace("_apos;", "'")
+        return self._fix_spelling(self._text)
 
     def title(self):
         if self.is_sub():
             return self._type
         else:
-            return "{} #{} {}".format(self._type, self._batter_number, self._batter_name)
+            s = "{} #{} {}".format(self._type, self._batter_number, self._batter_name)
+            return self._fix_spelling(s)
 
-
+    def _fix_spelling(self, s):
+        for bad, good in self.name_spell_corrections.items():
+            s = re.sub(bad, good, s, flags=re.IGNORECASE)
+        s = s.replace("  ", " ").replace("_apos;", '\'').replace("&apos;", '\'')
+        s = s.replace("<span class=\"score\">Scores</span>", "Scores")
+        s = s.replace("<span class=\"earned\">Earned</span>", "Earned")
+        s = s.replace("<span class=\"unearned\">Unearned</span>", "Unearned")
+        return s
 
     ######################### GRAVEYARD #################################
     # TDH - May 2013
