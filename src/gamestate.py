@@ -252,6 +252,8 @@ class GameState:
         self._current_place_in_order = 1
         self._last_batter = None
 
+        self._number_of_rbi_runs_on_play = 0  # for counting non-error runs
+
         # These pending attributes allow us to make updates to the gamestate but
         # hold off applying it to attributes until after event is complete
         self._bases = Bases()
@@ -429,7 +431,7 @@ class GameState:
     def _allow_rbi(self):
         # tally any already scored before RBI option acknowledged
         if not self._count_any_rbi:
-            self.rbi_on_play = self.number_of_runs_on_play
+            self.rbi_on_play = self._number_of_rbi_runs_on_play
             for i in range(self.rbi_on_play):
                 self._increment_bat_stat("RBI")
         self._count_any_rbi = True
@@ -585,6 +587,8 @@ class GameState:
         self.bunt_flag = None
 
         self.number_of_runs_on_play = 0
+        self._number_of_rbi_runs_on_play = 0
+
         self.id_of_player_fielding_batted_ball = None
 
     def _apply_pending_base_runner_positions(self):
@@ -809,7 +813,7 @@ class GameState:
         # take place before we assign the new positions and confirm all positions
         # are accounted for to be performed prior to the first batter
 
-        self.logger.info("====================== {} =====================".format(self.inning_string()))
+        #self.logger.info("====================== {} =====================".format(self.inning_string()))
 
     #------------------------------------------------------------------------------
     # PLAY ERRORS
@@ -1003,7 +1007,7 @@ class GameState:
         self.event_text += "X" + '(' + ''.join([str(p) for p in fielders]) + ')'
         self._set_event_type(constants.EVENT_CODE.GENERIC_OUT, player_name)
         self._out(player_name)
-        self.logger.debug("{} thrown out {}".format(player_name, fielders))
+        self.logger.info("{} thrown out {}{}{}".format(player_name, fielders, ["", "DP"][double_play], ["", "TP"][triple_play]))
 
     def out_caught_stealing(self, runner_name, fielders=[], double_play=False):
         self._record_any_pending_runner_event()
@@ -1270,6 +1274,7 @@ class GameState:
         self.event_text += "TH"
 
     def advance_on_error(self, player_name, base, error_position, error_type, sacrifice=False):
+        self.logger.info("{} advances to {} on error by position {}".format(player_name, base, error_position))
         self._record_any_pending_runner_event()
         if self.batter == player_name and self._first_batter_event:
             self.pitch_sequence += constants.PITCH_CHARS.BALL_PUT_INTO_PLAY_BY_BATTER
@@ -1352,12 +1357,19 @@ class GameState:
         try:
             credit_batter = self.batting_lineup.find_player_by_number(batter_number)
             if batter_number != current_batter.number:
-                self.logger.error("Advance recorded from batter number {} {} that is not current batter {}".format(batter_number,
-                             credit_batter.name,
-                             self.batter))
+                # check for the weird scoring choice to credit the runner!
+                if batter_number == credit_batter.number:
+                    credit_batter = current_batter
+                    self.logger.info("Auto: Batter is {} awarded advance not runner {} ".format(self.batter, player_name))
+
+                else:
+                    self.logger.error("Advance recorded from batter number {} {} that is not current batter {}".format(batter_number,
+                                      credit_batter.name,
+                                      self.batter))
+
         except KeyError:
-            credit_batter = None
-            self.logger.error("Attempt to credit batter number that's not in lineup: {}".format(batter_number))
+            credit_batter = current_batter
+            self.logger.error("Attempt to credit batter number that's not in lineup: {}.  Crediting current batter {}".format(batter_number, self.batter))
 
         self._advance_player(player_name, base, credit_batter=credit_batter)
 
@@ -1454,6 +1466,8 @@ class GameState:
 
     def _score(self, on_error=False, credit_batter=None):
         self.number_of_runs_on_play += 1
+        if not on_error:
+            self._number_of_rbi_runs_on_play += 1
         self.runs_scored_in_this_half_inning += 1
         self.runs_scored_in_half_inning_after_this_event -= 1
         if self._count_any_rbi and not on_error:  # not (on_error or self.double_play_flag or self.wild_pitch_flag):
