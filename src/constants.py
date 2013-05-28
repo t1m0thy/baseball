@@ -206,7 +206,7 @@ class EVENT_CODE:
 
 class PARSING_OUTS:
     DOUBLE_PLAY = "double play"
-    TRIPLE_PLAY = "double play"
+    TRIPLE_PLAY = "triple play"
     FLY_OUT = "fly out"
     STRIKE_OUT = "strike out"
     SACRIFICE = "sacrifice"
