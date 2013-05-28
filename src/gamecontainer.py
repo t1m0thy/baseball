@@ -14,7 +14,7 @@ from lineup import Lineup, PlayerList, Player
 #  see: http://stackoverflow.com/questions/4402491/custom-json-sort-keys-order-in-python
 json.encoder.c_make_encoder = None
 
-ERROR_KEY = "process_errors"
+ERROR_KEY = "process_output"
 
 
 class GameContainer:
@@ -59,10 +59,10 @@ class GameContainer:
         d["url"] = self.url
         d["home_team"] = self.home_team
         d["away_team"] = self.away_team
-        d["home_lineup"] = [p.as_odict() for p in self.home_lineup]
-        d["home_roster"] = [p.as_odict() for p in self.home_roster if p not in self.home_lineup]
-        d["away_lineup"] = [p.as_odict() for p in self.away_lineup]
-        d["away_roster"] = [p.as_odict() for p in self.away_roster if p not in self.away_lineup]
+        d["home_lineup"] = [p.as_odict() for p in self.home_roster if p.starter]
+        d["home_roster"] = [p.as_odict() for p in self.home_roster if not p.starter]
+        d["away_lineup"] = [p.as_odict() for p in self.away_roster if p.starter]
+        d["away_roster"] = [p.as_odict() for p in self.away_roster if not p.starter]
         d["list_of_halfs"] = self.list_of_halfs
         d["general_errors"] = []
         for e in self.errors:
@@ -90,30 +90,36 @@ class GameContainer:
         self.away_roster = PlayerList()
         self.home_roster = PlayerList()
 
+        skip = ["bat_stats", "pitch_stats"]
+
         for playerd in d["home_lineup"]:
             p = Player(playerd["name"])
             for key, val in playerd.items():
-                setattr(p, key, val)
+                if key not in skip:
+                    setattr(p, key, val)
             self.home_lineup.append(p)
             self.home_roster.append(p)
 
         for playerd in d["away_lineup"]:
             p = Player(playerd["name"])
             for key, val in playerd.items():
-                setattr(p, key, val)
+                if key not in skip:
+                    setattr(p, key, val)
             self.away_lineup.append(p)
             self.away_roster.append(p)
 
         for playerd in d["home_roster"]:
             p = Player(playerd["name"])
             for key, val in playerd.items():
-                setattr(p, key, val)
+                if key not in skip:
+                    setattr(p, key, val)
             self.home_roster.append(p)
 
         for playerd in d["away_roster"]:
             p = Player(playerd["name"])
             for key, val in playerd.items():
-                setattr(p, key, val)
+                if key not in skip:
+                    setattr(p, key, val)
             self.away_roster.append(p)
 
         self.gameid = d["gameid"]
@@ -146,7 +152,7 @@ class GameContainerLogHandler(logging.Handler):
         self.gc = game_container
         formatter = logging.Formatter("%(levelname)s - %(message)s")
         self.setFormatter(formatter)
-        self.setLevel(logging.WARN)
+        self.setLevel(logging.INFO)
 
     def emit(self, record):
         try:
