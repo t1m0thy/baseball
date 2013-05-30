@@ -650,7 +650,7 @@ class GameState:
     #------------------------------------------------------------------------------
     #  NEW CALLS
     #------------------------------------------------------------------------------
-    def new_batter(self, player_name):
+    def new_batter(self, player_name, player_number=None):
         if self.batter == player_name:
             return
         if self.event_type != 0:  # something happened on the last play
@@ -750,6 +750,10 @@ class GameState:
 
             else:
                 raise
+
+        if player_number is not None and batter_player.number != player_number:
+            batter_player.number = player_number
+
         self.batter = batter_player.name
         self.batter_hand = batter_player.bat_hand
         if self.batter_hand == constants.SWITCH:

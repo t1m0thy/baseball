@@ -47,11 +47,17 @@ class GameContainer:
         self.list_of_halfs.append([])
         self.current_half = self.list_of_halfs[-1]
 
-    def add_event(self, title, text, batter):
-        self.current_half.append(OrderedDict(title=title, batter=batter, text=text, inning=(len(self.list_of_halfs)+ 1)/2.0))
+    def add_event(self, title, text, batter, batter_number):
+        self.current_half.append(OrderedDict(title=title,
+                                             batter=batter,
+                                             batter_number=batter_number,
+                                             text=text,
+                                             inning=(len(self.list_of_halfs) + 1) / 2.0))
 
     def add_sub(self, title, text):
-        self.current_half.append(OrderedDict(title=title, text=text, inning=(len(self.list_of_halfs)+ 1)/2.0))
+        self.current_half.append(OrderedDict(title=title,
+                                             text=text,
+                                             inning=(len(self.list_of_halfs) + 1) / 2.0))
 
     def save(self):
         d = OrderedDict()

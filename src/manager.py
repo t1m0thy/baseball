@@ -149,7 +149,7 @@ def scrape_to_container(gameid, cache_path=None, session=None, save_container=Tr
             if raw_event.is_sub():
                 gc.add_sub(raw_event.title(), raw_event.text())
             else:
-                gc.add_event(raw_event.title(), raw_event.text(), raw_event.batter())
+                gc.add_event(raw_event.title(), raw_event.text(), raw_event.batter(), raw_event.batter_number())
 
 
     if save_container:
@@ -201,7 +201,7 @@ def parse_from_container(gc, game=None, session=None):
             for event_info in half:
                 try:
                     if "batter" in event_info:
-                        game.new_batter(event_info["batter"])
+                        game.new_batter(event_info["batter"], event_info.get("batter_number"))
                     logger.debug("Parsing: {}".format(event_info["text"]))
                     parser.parse_event(event_info["text"])
                 except pp.ParseException, pe:
