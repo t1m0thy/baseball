@@ -166,14 +166,16 @@ class PointStreakParser:
                   ).setResultsName(constants.PARSE_ADVANCE.HOME_RUN)
         balk = pp.Keyword("balk", caseless=True).setResultsName(constants.PARSE_ADVANCE.BALK)
         dropped_third_strike = pp.Keyword("dropped 3rd strike", caseless=True).setResultsName(constants.PARSE_ADVANCE.DROPPED_THIRD_STRIKE)
+        fielders_choice_abbr = (pp.Optional(pp.oneOf("1 2 3 4 5 6 7 8 9").setResultsName(constants.PARSING.POSITION)) + pp.Keyword("FC", caseless=True)).setResultsName(constants.PARSE_ADVANCE.FIELDERS_CHOICE)
         fielders_choice = pp.Keyword("fielder's choice", caseless=True).setResultsName(constants.PARSE_ADVANCE.FIELDERS_CHOICE)
+
         hit_by_pitch = pp.Keyword("hit by pitch", caseless=True).setResultsName(constants.PARSE_ADVANCE.HIT_BY_PITCH)
         walk = pp.Keyword("walk", caseless=True).setResultsName(constants.PARSE_ADVANCE.WALK)
         stolen_base = ((pp.Word(pp.nums) + pp.Keyword("SB", caseless=True)) | pp.Keyword("stolen base", caseless=True)).setResultsName(constants.PARSE_ADVANCE.STOLEN_BASE)
         error = ((pp.Keyword("error by the") + position.setResultsName(constants.PARSING.POSITION)
                   ) | \
                 (pp.Optional(pp.Keyword("SAC", caseless=True).setResultsName(constants.PARSE_ADVANCE.SACRIFICE)) + pp.Optional(pp.Word(pp.nums)) +
-                 pp.CaselessLiteral("e") +
+                 pp.CaselessLiteral("e") + pp.Optional(dash) +
                  pp.oneOf("1 2 3 4 5 6 7 8 9").setResultsName(constants.PARSING.POSITION) +
                  # Fielder ERror, Throwing Error, Muffed (poorly caught between fielders)
                  pp.Optional(pp.CaselessLiteral("F") | pp.CaselessLiteral("D") | pp.CaselessLiteral("T") | pp.CaselessLiteral("M") ).setResultsName(constants.PARSING.ERROR_TYPE) +
@@ -193,7 +195,7 @@ class PointStreakParser:
         empty = pp.Empty().setResultsName(constants.PARSE_ADVANCE.UNKNOWN)
 
         advance_desc = left_paren + (balk | wild_pitch | single | double | triple | home_run | dropped_third_strike | \
-                                       fielders_choice | hit_by_pitch | throw | walk | stolen_base | \
+                                       fielders_choice | fielders_choice_abbr | hit_by_pitch | throw | walk | stolen_base | \
                                        error | player_num | pass_ball | ground_rule | intentional_walk | unknown | empty
                                        ) + right_paren
         advances = (player +
