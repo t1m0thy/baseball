@@ -123,15 +123,13 @@ class GameInfo:
         self.season_id = game_info.get("season_id")
         self.league_id = game_info.get("league_id")
 
-        start_date_time = datetime.datetime.strptime(game_info.get("Date", "") + ", " + game_info.get("Time", ""),
-                                                     "%A, %B %d %Y, %I:%M %p")
+        start_date_time = datetime.datetime.strptime(game_info.get("Date", "").strip() + ", " + game_info.get("Start Time", "").strip(),
+                                                     "%m/%d/%Y, %I:%M %p")
         self._set_date(start_date_time)
 
         try:
-            end_date_time = datetime.datetime.strptime(game_info.get("EndDate", "") + ", " + game_info.get("EndTime", ""),
-                                                       "%m/%d/%Y, %I:%M %p")
-            duration = end_date_time - start_date_time
-            self.minutes_game_ct = duration.seconds / 60
+            hours, minutes = game_info.get("Duration", "").split(":")
+            self.minutes_game_ct = int(hours) + (int(minutes) / 60.0)
         except ValueError:
             pass
 

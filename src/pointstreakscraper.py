@@ -101,7 +101,19 @@ class PointStreakScraper(GameScraper):
 
         xml = self._get_pointstreak_xml()
         self.root = lxml.etree.fromstring(xml)
-        self.game_info = dict(self.root.find(".//{*}BaseballGame").items())
+
+        infodiv = self.soup.find_all("div", {"id": "psbb_gameInfo"})[0]
+        self.game_info = {}
+        for li in infodiv.find_all("li"):
+            key, val = li.text.split(":", 1)
+            self.game_info[key] = val
+
+        summary = self.soup.find_all("div", {"id": "psbb_game_summary"})[0]
+
+        self.game_info["VisitingTeam"] = summary.find_all("td", {"class": "psbb_box_score_team", "align":"left"})[0].text.strip()
+        self.game_info["HomeTeam"] = summary.find_all("td", {"class": "psbb_box_score_team", "align":"right"})[0].text.strip()
+
+        #self.game_info = dict(self.root.find(".//{*}BaseballGame").items())
 
         navdiv = self.soup.find_all("div", {"id": "psbb_nav_league"})
         league_id, season_id = navdiv[0].ul.li.a.attrs.get("href").split("?")[1].split("&")
