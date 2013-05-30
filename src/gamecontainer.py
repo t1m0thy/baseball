@@ -96,7 +96,7 @@ class GameContainer:
         self.away_roster = PlayerList()
         self.home_roster = PlayerList()
 
-        skip = ["bat_stats", "pitch_stats"]
+        skip = ["bat_stats", "pitch_stats", "name"]
 
         for playerd in d["home_lineup"]:
             p = Player(playerd["name"])
