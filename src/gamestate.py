@@ -279,7 +279,6 @@ class GameState:
 
     def set_game_info_dict(self, gi_dict):
         self.game_info = gi_dict
-        print self.game_info
         #Date: 'Tuesday, August 07 2012'
         #Time: '7:03 PM'
 
@@ -453,44 +452,46 @@ class GameState:
 
     def _update_fielders(self):
         fielder_pos_dict = self.fielding_lineup.position_dict()
+        try:
+            self.pitcher = fielder_pos_dict['P']
+            self.result_pitcher = self.pitcher
+            player_pitcher = self.fielding_lineup.find_player_by_name(self.pitcher)
+            self.pitcher_hand = player_pitcher.throw_hand
+            self.result_pitcher_hand = self.pitcher_hand
 
-        self.pitcher = fielder_pos_dict['P']
-        self.result_pitcher = self.pitcher
-        player_pitcher = self.fielding_lineup.find_player_by_name(self.pitcher)
-        self.pitcher_hand = player_pitcher.throw_hand
-        self.result_pitcher_hand = self.pitcher_hand
+            # don't include pitchers in missing fielders. That has to throw an error
+            self._missing_fielders = []
+            missing = self.fielding_lineup.missing_fielders()
+            missing.sort()
+            #for position in missing:
+            if missing:
+                possibles = [player for player in self.fielding_lineup if player.get_replacing_field_position() in missing]
+                possibles_dict = dict([(player.get_replacing_field_position(), player) for player in possibles])
+                possible_positions = possibles_dict.keys()
+                possible_positions.sort()
+                if possible_positions == missing:
+                    for position in possibles_dict:
+                        new_player = possibles_dict[position]
+                        new_player.set_position(position)
+                        fielder_pos_dict[position] = new_player.name
+                        self.logger.warning("Automatic Field Position Assignment: {} to {}".format(new_player.name, new_player.position))
+                else:
+                    for position in missing:
+                        self._missing_fielders.append(position)
+                        fielder_pos_dict[position] = '?'
+                        self.logger.warning("{}: Missing Fielder for {}".format(self.inning_string(), position))
 
-        # don't include pitchers in missing fielders. That has to throw an error
-        self._missing_fielders = []
-        missing = self.fielding_lineup.missing_fielders()
-        missing.sort()
-        #for position in missing:
-        if missing:
-            possibles = [player for player in self.fielding_lineup if player.get_replacing_field_position() in missing]
-            possibles_dict = dict([(player.get_replacing_field_position(), player) for player in possibles])
-            possible_positions = possibles_dict.keys()
-            possible_positions.sort()
-            if possible_positions == missing:
-                for position in possibles_dict:
-                    new_player = possibles_dict[position]
-                    new_player.set_position(position)
-                    fielder_pos_dict[position] = new_player.name
-                    self.logger.warning("Automatic Field Position Assignment: {} to {}".format(new_player.name, new_player.position))
-            else:
-                for position in missing:
-                    self._missing_fielders.append(position)
-                    fielder_pos_dict[position] = '?'
-                    self.logger.warning("{}: Missing Fielder for {}".format(self.inning_string(), position))
 
-        self.catcher = fielder_pos_dict['C']
-        self.first_baseman = fielder_pos_dict['1B']
-        self.second_baseman = fielder_pos_dict['2B']
-        self.third_baseman = fielder_pos_dict['3B']
-        self.shortstop = fielder_pos_dict['SS']
-        self.left_fielder = fielder_pos_dict['LF']
-        self.center_fielder = fielder_pos_dict['CF']
-        self.right_fielder = fielder_pos_dict['RF']
-
+            self.catcher = fielder_pos_dict['C']
+            self.first_baseman = fielder_pos_dict['1B']
+            self.second_baseman = fielder_pos_dict['2B']
+            self.third_baseman = fielder_pos_dict['3B']
+            self.shortstop = fielder_pos_dict['SS']
+            self.left_fielder = fielder_pos_dict['LF']
+            self.center_fielder = fielder_pos_dict['CF']
+            self.right_fielder = fielder_pos_dict['RF']
+        except KeyError, e:
+            raise KeyError("Unable to find fielder at position {}".format(e))
     def _current_batting_lineup(self):
         if self.bat_home_id:
             return self.home_lineup
@@ -735,7 +736,6 @@ class GameState:
                 try:
                     old_player = self._current_batting_lineup().find_player_by_order(self._current_place_in_order)
                     self.logger.info("found old player {}".format(old_player.name))
-                    print batter_player.is_pending_sub(), batter_player.order
                     if old_player.plate_appearances == 0 or batter_player.is_pending_sub() or batter_player.order is None:
                         old_player.order = batter_player.order
                         batter_player.order = self._current_place_in_order
@@ -743,7 +743,7 @@ class GameState:
                         self.logger.warning("Used roster for auto-order swap of %s for %s" %
                                        (batter_player.name, old_player.name))
                     else:
-                        raise
+                        raise StandardError("Unable to determine su automatically")
                 except KeyError:
                     self.logger.warning("No player found to replace at position {} in the order.".format(self._current_place_in_order))
                     batter_player.order = self._current_place_in_order
@@ -751,8 +751,9 @@ class GameState:
             else:
                 raise
 
-        if player_number is not None and batter_player.number != player_number:
-            batter_player.number = player_number
+        if player_number is not None and int(batter_player.number) != int(player_number):
+            self.logger.warning("Swapping {}'s number #{} for #{}".format(batter_player.name, batter_player.number, player_number))
+            batter_player.number = int(player_number)
 
         self.batter = batter_player.name
         self.batter_hand = batter_player.bat_hand
@@ -1360,9 +1361,9 @@ class GameState:
 
         try:
             credit_batter = self.batting_lineup.find_player_by_number(batter_number)
-            if batter_number != current_batter.number:
+            if int(batter_number) != int(current_batter.number):
                 # check for the weird scoring choice to credit the runner!
-                if batter_number == credit_batter.number:
+                if int(batter_number) == int(credit_batter.number):
                     credit_batter = current_batter
                     self.logger.info("Auto: Batter is {} awarded advance not runner {} ".format(self.batter, player_name))
 
@@ -1370,7 +1371,6 @@ class GameState:
                     self.logger.error("Advance recorded from batter number {} {} that is not current batter {}".format(batter_number,
                                       credit_batter.name,
                                       self.batter))
-
         except KeyError:
             credit_batter = current_batter
             self.logger.error("Attempt to credit batter number that's not in lineup: {}.  Crediting current batter {}".format(batter_number, self.batter))

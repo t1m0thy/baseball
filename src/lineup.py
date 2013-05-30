@@ -80,7 +80,11 @@ class Player:
         if name is not None:
             self.name = Name(self.name)
 
-        self.number = number
+        if number is not None:
+            self.number = int(number)
+        else:
+            self.number = None
+
         try:
             self.order = int(order)
         except TypeError:
@@ -151,6 +155,9 @@ class Player:
             out[attr] = getattr(self, attr)
         out.update(vars(self))
         return out
+
+    def set_number(self, number):
+        self.number = int(number)
 
     def set_name(self, name):
         self.name = Name(name)
@@ -381,7 +388,7 @@ class PlayerList(list):
 
     def find_player_by_number(self, number):
         for p in self:
-            if str(p.number) == str(number):
+            if int(p.number) == int(number):
                 return p
         raise KeyError("No player found with number %s" % number)
 
