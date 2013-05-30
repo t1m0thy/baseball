@@ -187,7 +187,7 @@ class PointStreakParser:
         ground_rule = (pp.Keyword("ground rule", caseless=True) +
                        pp.oneOf("single double triple", caseless=True)
                        ).setResultsName(constants.PARSE_ADVANCE.GROUND_RULE)
-        throw = (pp.Literal("T") + pp.Optional(pp.Word(pp.nums))).setResultsName(constants.PARSE_ADVANCE.THROW)
+        throw = ((pp.Keyword("Throw", caseless=True) | pp.Literal("T")) + pp.Optional(pp.Word(pp.nums))).setResultsName(constants.PARSE_ADVANCE.THROW)
         throw_specific = (pp.delimitedList(pp.Word(pp.nums), "-")+pp.Optional(dash)).setResultsName(constants.PARSE_ADVANCE.THROW)
         intentional_walk = pp.Keyword("intentional walk", caseless=True).setResultsName(constants.PARSE_ADVANCE.INTENTIONAL_WALK)
         player_num = pp.Word(pp.nums).setResultsName(constants.PARSE_ADVANCE.PLAYER_NUM) + \
@@ -212,11 +212,11 @@ class PointStreakParser:
         unearned_span = pp.Optional(pp.Literal('<span class="unearned">')).suppress()
         score_span = pp.Optional(pp.Literal('<span class="score">')).suppress()
         earned = earned_span + pp.Keyword("Earned", caseless=True).setResultsName(constants.PARSING.EARNED) + \
-                    end_span + advance_desc.setResultsName(constants.PARSING.DESCRIPTION)
+                    end_span
         unearned = unearned_span + pp.Keyword("Unearned", caseless=True).setResultsName(constants.PARSING.UNEARNED) + \
-                    end_span + advance_desc.setResultsName(constants.PARSING.DESCRIPTION)
+                    end_span
         score_word = score_span + pp.Keyword("Scores", caseless=True) + end_span
-        scores = (player + score_word + (unearned | earned)).setParseAction(self.gamewrap.parse_score)
+        scores = (player + score_word + pp.Optional(unearned | earned) + advance_desc.setResultsName(constants.PARSING.DESCRIPTION)).setParseAction(self.gamewrap.parse_score)
 
         #======================================================================
         # SUBS
