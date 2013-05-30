@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup, Tag
 import os
 import json
 import string
+import re
 
 from models.playerinfo import PlayerInfo
 
