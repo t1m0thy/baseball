@@ -446,7 +446,7 @@ class PSPRawEventXML(RawEvent):
             logger.exception("Found event tag %s" % event_type)
         self._type = event_type
         self._batter_name = batter
-        self._batter_number = number
+        self._batter_number = number.strip()
         # If this is a sub, add the Type to the beginning of the string: ie.  "Offensive Substitution"
         if sub_type is not None:
             text = sub_type + '. ' + text

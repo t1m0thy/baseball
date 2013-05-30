@@ -168,9 +168,12 @@ def parse_from_container(gc, game=None, session=None):
     game_context_log_filter = GameContextFilter()
     logger.addFilter(game_context_log_filter)
     game.logger.addFilter(game_context_log_filter)  # will add context (current inning etc) to the error logs
+    psp.gamewrapper.logger.addFilter(game_context_log_filter)
+
     gc_handler = GameContainerLogHandler(gc)
     game.logger.addHandler(gc_handler)  # will ensure that errors get inserted into container
     logger.addHandler(gc_handler)
+    psp.gamewrapper.logger.addHandler(gc_handler)
     try:
         game.home_team_id = gc.home_team
         game.visiting_team = gc.away_team
@@ -237,7 +240,13 @@ def parse_from_container(gc, game=None, session=None):
     finally:
         gc.save()
         game.logger.removeFilter(game_context_log_filter)
+        game.logger.removeHandler(gc_handler)
         logger.removeFilter(game_context_log_filter)
+        logger.removeHandler(gc_handler)
+        psp.gamewrapper.logger.removeFilter(game_context_log_filter)
+        psp.gamewrapper.logger.removeHandler(gc_handler)
+
+
     return game
 
 

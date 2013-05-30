@@ -1,6 +1,6 @@
 import pyparsing as pp
 import constants
-from gamewrapper import GameWrapper
+import gamewrapper
 
 import logging
 logger = logging.getLogger("pointstreak parser")
@@ -12,7 +12,7 @@ class PointStreakParser:
 
     """
     def __init__(self, game=None, player_names=[]):
-        self.gamewrap = GameWrapper(game)
+        self.gamewrap = gamewrapper.GameWrapper(game)
         self.event_cache = []
         self.player_names = player_names
         self.setup_parser()
@@ -188,6 +188,7 @@ class PointStreakParser:
                        pp.oneOf("single double triple", caseless=True)
                        ).setResultsName(constants.PARSE_ADVANCE.GROUND_RULE)
         throw = (pp.Literal("T") + pp.Optional(pp.Word(pp.nums))).setResultsName(constants.PARSE_ADVANCE.THROW)
+        throw_specific = (pp.delimitedList(pp.Word(pp.nums), "-")+pp.Optional(dash)).setResultsName(constants.PARSE_ADVANCE.THROW)
         intentional_walk = pp.Keyword("intentional walk", caseless=True).setResultsName(constants.PARSE_ADVANCE.INTENTIONAL_WALK)
         player_num = pp.Word(pp.nums).setResultsName(constants.PARSE_ADVANCE.PLAYER_NUM) + \
                     pp.Optional(pp.Keyword("throw", caseless=True) | pp.Keyword("T") |  error |  pp.Keyword("bu") | pp.Keyword("cs"))
@@ -195,7 +196,7 @@ class PointStreakParser:
         empty = pp.Empty().setResultsName(constants.PARSE_ADVANCE.UNKNOWN)
 
         advance_desc = left_paren + (balk | wild_pitch | single | double | triple | home_run | dropped_third_strike | \
-                                       fielders_choice | fielders_choice_abbr | hit_by_pitch | throw | walk | stolen_base | \
+                                       fielders_choice | fielders_choice_abbr | hit_by_pitch | throw | throw_specific | walk | stolen_base | \
                                        error | player_num | pass_ball | ground_rule | intentional_walk | unknown | empty
                                        ) + right_paren
         advances = (player +
