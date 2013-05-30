@@ -231,7 +231,7 @@ def parse_from_container(gc, game=None, session=None):
         for p in game.home_roster + game.away_roster:
             for stat in ["AB", "R", "H", "RBI", "BB", "SO"]:
                 if p.bat_stats.get(stat, 0) != p.verify_bat_stats.get(stat, 0):
-                    logger.error(" counted {} {} does not equal reported {} {} for player {}".format(stat, p.bat_stats.get(stat, 0), stat, p.verify_bat_stats.get(stat, 0), p.name))
+                    logger.warning(" counted {} {} does not equal reported {} {} for player {}".format(stat, p.bat_stats.get(stat, 0), stat, p.verify_bat_stats.get(stat, 0), p.name))
 
         if session is not None:
             for e in game.events():
