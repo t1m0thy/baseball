@@ -751,7 +751,7 @@ class GameState:
             else:
                 raise
 
-        if player_number is not None and int(batter_player.number) != int(player_number):
+        if player_number is not None and str(batter_player.number) != str(player_number):
             self.logger.warning("Swapping {}'s number #{} for #{}".format(batter_player.name, batter_player.number, player_number))
             batter_player.number = int(player_number)
 
