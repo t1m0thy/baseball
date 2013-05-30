@@ -94,7 +94,10 @@ class GameWrapper:
                                       )
 
         else:
-            logger.error("Unknown Putout Description" + str(description))
+            if len(description) == 0:
+                logger.error("Empty Putout Description")
+            else:
+                logger.error("Unknown Putout Description" + str(description))
             self._game._out(player_name)
             #raise StandardError("Parsing Error from unknown putout description: " + ' '.join(tokens))
 
@@ -197,7 +200,10 @@ class GameWrapper:
             self._game.advance_from_batter(player_name, base, batter_number)
         else:
             #raise StandardError("Parsing Error from unknown Advance description: " + ' '.join(description))
-            logger.error("Unknown Advance Description" + str(description))
+            if len(description) == 0:
+                logger.error("Empty Advance Description")
+            else:
+               logger.error("Unknown Advance Description" + str(description))
             self._game._advance_player(player_name, base, earned)
 
     def event_complete(self, *args):
