@@ -80,9 +80,9 @@ class Player:
         if name is not None:
             self.name = Name(self.name)
 
-        if number is not None:
+        try:
             self.number = int(number)
-        else:
+        except:
             self.number = None
 
         try:
@@ -155,9 +155,6 @@ class Player:
             out[attr] = getattr(self, attr)
         out.update(vars(self))
         return out
-
-    def set_number(self, number):
-        self.number = int(number)
 
     def set_name(self, name):
         self.name = Name(name)
