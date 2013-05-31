@@ -195,6 +195,8 @@ class GameWrapper:
             self._game.advance_on_dropped_third_strike(player_name)
         elif constants.PARSE_ADVANCE.BALK in description:
             self._game.advance_on_balk(player_name, base)
+        elif constants.PARSE_ADVANCE.INTERFERENCE in description:
+            self._game.advance_on_interference(player_name, base, description.get(constants.PARSING.POSITION))
         elif constants.PARSE_ADVANCE.PLAYER_NUM in description:
             batter_number = description.get(constants.PARSE_ADVANCE.PLAYER_NUM)
             self._game.advance_from_batter(player_name, base, batter_number)

@@ -186,6 +186,7 @@ class PointStreakParser:
         throw = ((pp.Keyword("Throw", caseless=True) | pp.Literal("T")) + pp.Optional(pp.Word(pp.nums))).setResultsName(constants.PARSE_ADVANCE.THROW)
         throw_specific = (pp.delimitedList(pp.Word(pp.nums), "-")+pp.Optional(dash)).setResultsName(constants.PARSE_ADVANCE.THROW)
         intentional_walk = pp.Keyword("intentional walk", caseless=True).setResultsName(constants.PARSE_ADVANCE.INTENTIONAL_WALK)
+        interference = pp.Keyword("catcher obstruction", caseless=True).setResultsName(constants.PARSE_ADVANCE.INTERFERENCE)
         player_num = pp.Word(pp.nums).setResultsName(constants.PARSE_ADVANCE.PLAYER_NUM) + \
                     pp.Optional(pp.Keyword("throw", caseless=True) | pp.Keyword("T") |  error |  pp.Keyword("bu") | pp.Keyword("cs"))
         unknown = pp.OneOrMore(pp.Word(pp.alphanums)).setResultsName(constants.PARSE_ADVANCE.UNKNOWN)
@@ -193,7 +194,7 @@ class PointStreakParser:
 
         advance_desc = left_paren + (balk | wild_pitch | single | double | triple | home_run | dropped_third_strike | \
                                        fielders_choice | fielders_choice_abbr | hit_by_pitch | throw | throw_specific | walk | stolen_base | \
-                                       error | player_num | pass_ball | ground_rule | intentional_walk | unknown | empty
+                                       error | player_num | pass_ball | ground_rule | interference | intentional_walk | unknown | empty
                                        ) + right_paren
         advances = (player +
                     pp.Keyword("advances to", caseless=True) +

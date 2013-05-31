@@ -267,5 +267,6 @@ class PARSE_ADVANCE:
     BALK = "balk"
     EXTRA_BASES = "extra bases"
     SACRIFICE = "sacrifice"  # when paired with error
+    INTERFERENCE = "interference"
 
 MAX_ASSIST_COUNT = 10

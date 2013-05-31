@@ -1416,19 +1416,14 @@ class GameState:
 
         self._advance_player(player_name, base, credit_batter=credit_batter)
 
-    def advance_on_interference(self, player_name, position=None):
-        if self.batter != player_name:
-            raise StandardError("{}\nAdvance from Interference player {} who is not current batter {}".format(self.self.inning_string(),
-                                                                                                              player_name,
-                                                                                                              self.batter))
-        self._advance_player(player_name, 1)
+    def advance_on_interference(self, player_name, base, position=None):
         self.pitch_sequence += constants.PITCH_CHARS.NO_PITCH_ON_BALKS_AND_INTERFERENCE_CALLS
         if position is not None:
             self.event_text += 'C/E' + str(self.lookup_position_num(position))
         else:
             self.event_text += 'C'
         self._set_event_type(constants.EVENT_CODE.INTERFERENCE, player_name)
-        self._allow_rbi()
+        self._advance_player(player_name, base)
         self._first_batter_event = False
 
     def advance_on_balk(self, player_name, base):

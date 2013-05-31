@@ -416,6 +416,8 @@ class PlayerList(list):
         out = "\n".join([str(p) for p in tmp])
         return out
 
+    def __repr__(self):
+        return '<' + str(self) + '>'
 
 class Lineup(PlayerList):
     def move_player(self, name, new_position):
