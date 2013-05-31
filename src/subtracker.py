@@ -17,8 +17,6 @@ class SubTracker(GameWrapper):
             p.starting_position = p.all_positions
         # starting positions begins as all possible, but we will eliminate options
         self._found_starting_pitcher = False
-        print self.lineup
-
 
     def parse_offensive_sub(self, text, location, tokens):
         new_player_name = tokens[constants.PARSING.NEW_PLAYER][1:]
@@ -74,6 +72,5 @@ class SubTracker(GameWrapper):
                 # makes sure to not eliminate the only remaining position.  if a player moves away and
                 # back to a starting position, this could happen
                 if len(player.starting_position) > 1:
-                    print player.name + " didn't start at " + position
                     player.starting_position.remove(position)
 

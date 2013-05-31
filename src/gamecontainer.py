@@ -5,6 +5,7 @@ a means to save games outside of their html state.
 
 import logging
 import json
+import copy
 import os
 from collections import OrderedDict
 
@@ -31,17 +32,33 @@ class GameContainer:
             self.load()
         self.errors = []
 
-    def set_home_lineup(self, lineup):
-        self.home_lineup = lineup
-
-    def set_away_lineup(self, lineup):
-        self.away_lineup = lineup
-
     def set_home_roster(self, roster):
-        self.home_roster = roster
+        self._home_roster = roster
+        self._home_roster_share = copy.copy(roster)
 
     def set_away_roster(self, roster):
-        self.away_roster = roster
+        self._away_roster = roster
+        self._away_roster_share = copy.copy(roster)
+
+    def away_roster(self):
+        return self._away_roster_share
+
+    def away_lineup(self):
+        lineup = Lineup()
+        for p in self._away_roster_share:
+            if p.starter:
+                lineup.append(p)
+        return lineup
+
+    def home_roster(self):
+        return self._home_roster_share
+
+    def home_lineup(self):
+        lineup = Lineup()
+        for p in self._home_roster_share:
+            if p.starter:
+                lineup.append(p)
+        return lineup
 
     def new_half(self):
         self.list_of_halfs.append([])
@@ -59,16 +76,16 @@ class GameContainer:
                                              text=text,
                                              inning=(len(self.list_of_halfs) + 1) / 2.0))
 
-    def save(self):
+    def as_odict(self):
         d = OrderedDict()
         d["gameid"] = self.gameid
         d["url"] = self.url
         d["home_team"] = self.home_team
         d["away_team"] = self.away_team
-        d["home_lineup"] = [p.as_odict() for p in self.home_roster if p.starter]
-        d["home_roster"] = [p.as_odict() for p in self.home_roster if not p.starter]
-        d["away_lineup"] = [p.as_odict() for p in self.away_roster if p.starter]
-        d["away_roster"] = [p.as_odict() for p in self.away_roster if not p.starter]
+        d["home_lineup"] = [p.as_odict() for p in self._home_roster if p.starter]
+        d["home_roster"] = [p.as_odict() for p in self._home_roster if not p.starter]
+        d["away_lineup"] = [p.as_odict() for p in self._away_roster if p.starter]
+        d["away_roster"] = [p.as_odict() for p in self._away_roster if not p.starter]
         d["list_of_halfs"] = self.list_of_halfs
         d["general_errors"] = []
         for e in self.errors:
@@ -79,8 +96,11 @@ class GameContainer:
                 d["list_of_halfs"][half_index][e.get("event_num")][ERROR_KEY] = event_errors
             except IndexError:
                 d["general_errors"].append(e.get("message"))
+        return d
+
+    def save(self):
         with open(os.path.join(self.cache_path, "gc_{}.json".format(self.gameid)), 'w') as f:
-            json.dump(d,
+            json.dump(self.as_odict(),
                       f,
                       #sort_keys=True,
                       indent=4,
@@ -90,11 +110,8 @@ class GameContainer:
         with open(os.path.join(self.cache_path, "gc_{}.json".format(self.gameid)), 'r') as f:
             d = json.load(f, object_pairs_hook=OrderedDict)
 
-        self.away_lineup = Lineup()
-        self.home_lineup = Lineup()
-
-        self.away_roster = PlayerList()
-        self.home_roster = PlayerList()
+        self._away_roster = PlayerList()
+        self._home_roster = PlayerList()
 
         skip = ["bat_stats", "pitch_stats", "name"]
 
@@ -103,30 +120,31 @@ class GameContainer:
             for key, val in playerd.items():
                 if key not in skip:
                     setattr(p, key, val)
-            self.home_lineup.append(p)
-            self.home_roster.append(p)
+            self._home_roster.append(p)
 
         for playerd in d["away_lineup"]:
             p = Player(playerd["name"])
             for key, val in playerd.items():
                 if key not in skip:
                     setattr(p, key, val)
-            self.away_lineup.append(p)
-            self.away_roster.append(p)
+            self._away_roster.append(p)
 
         for playerd in d["home_roster"]:
             p = Player(playerd["name"])
             for key, val in playerd.items():
                 if key not in skip:
                     setattr(p, key, val)
-            self.home_roster.append(p)
+            self._home_roster.append(p)
 
         for playerd in d["away_roster"]:
             p = Player(playerd["name"])
             for key, val in playerd.items():
                 if key not in skip:
                     setattr(p, key, val)
-            self.away_roster.append(p)
+            self._away_roster.append(p)
+
+        self._away_roster_share = copy.copy(self._away_roster)
+        self._home_roster_share = copy.copy(self._home_roster)
 
         self.gameid = d["gameid"]
         self.url = d.get("url")

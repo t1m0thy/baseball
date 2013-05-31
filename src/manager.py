@@ -125,7 +125,8 @@ def scrape_to_container(gameid, cache_path=None, session=None, save_container=Tr
     the container allows us to have a file that we can manually repair and reparse in the case of scoring errors
     """
 
-    scraper, away_starting_lineup, home_starting_lineup, away_roster, home_roster = setup_scraper(gameid, cache_path, session)
+    d = setup_scraper(gameid, cache_path, session)
+    scraper, away_starting_lineup, home_starting_lineup, away_roster, home_roster = d
     #=======================================================================
     # Move into game container
     #=======================================================================
@@ -136,10 +137,6 @@ def scrape_to_container(gameid, cache_path=None, session=None, save_container=Tr
     gc = GameContainer(CONTAINER_PATH, gameid, away, home)
 
     gc.url = pss.make_html_url(gameid)
-
-
-    gc.set_away_lineup(away_starting_lineup)
-    gc.set_home_lineup(home_starting_lineup)
 
     gc.set_away_roster(away_roster)
     gc.set_home_roster(home_roster)
@@ -161,7 +158,7 @@ def scrape_to_container(gameid, cache_path=None, session=None, save_container=Tr
 
 
 def parse_from_container(gc, game=None, session=None):
-    names_in_game = [p.name for p in gc.away_roster + gc.home_roster]
+    names_in_game = [p.name for p in gc.away_roster() + gc.home_roster()]
     home_subs = []
     away_subs = []
     home_batting = False
@@ -181,7 +178,7 @@ def parse_from_container(gc, game=None, session=None):
                         home_subs.append(text)
         home_batting = not home_batting
 
-    for sublist, lineup in ((home_subs, gc.home_lineup), (away_subs, gc.away_lineup)):
+    for sublist, lineup in ((home_subs, gc.home_lineup()), (away_subs, gc.away_lineup())):
         st = subtracker.SubTracker(lineup)
         subparser = psp.PointStreakParser(st, names_in_game)
         for sub in sublist:
@@ -191,13 +188,6 @@ def parse_from_container(gc, game=None, session=None):
                 logger.error("Error determining positions for {}.  starting position list {}".format(player.name, player.starting_position))
             else:
                 player.set_position(player.starting_position[0])
-
-    print "----Away Subs----"
-    for t in away_subs:
-        print t
-    print "----Home Subs----"
-    for t in home_subs:
-        print t
 
 
     if game is None:
@@ -218,11 +208,11 @@ def parse_from_container(gc, game=None, session=None):
         game.visiting_team = gc.away_team
         game.game_id = gc.gameid
 
-        game.set_away_lineup(gc.away_lineup)
-        game.set_home_lineup(gc.home_lineup)
+        game.set_away_lineup(gc.away_lineup())
+        game.set_home_lineup(gc.home_lineup())
 
-        game.set_away_roster(gc.away_roster)
-        game.set_home_roster(gc.home_roster)
+        game.set_away_roster(gc.away_roster())
+        game.set_home_roster(gc.home_roster())
 
         #=======================================================================
         # Parse plays
