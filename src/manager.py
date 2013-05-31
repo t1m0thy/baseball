@@ -12,11 +12,13 @@ import gameinfo
 import pointstreakparser as psp
 import pointstreakscraper as pss
 from models.playerinfo import PlayerInfo
+import subtracker
 
 from models import event
 from models import playerinfo
 from models import gameinfomodel
 from models import teaminfomodel
+import gamewrapper
 
 from constants import BASE_DIR, CONTAINER_PATH
 from gamecontainer import GameContainer, GameContainerLogHandler
@@ -123,7 +125,6 @@ def scrape_to_container(gameid, cache_path=None, session=None, save_container=Tr
     the container allows us to have a file that we can manually repair and reparse in the case of scoring errors
     """
 
-
     scraper, away_starting_lineup, home_starting_lineup, away_roster, home_roster = setup_scraper(gameid, cache_path, session)
     #=======================================================================
     # Move into game container
@@ -160,6 +161,44 @@ def scrape_to_container(gameid, cache_path=None, session=None, save_container=Tr
 
 
 def parse_from_container(gc, game=None, session=None):
+    names_in_game = [p.name for p in gc.away_roster + gc.home_roster]
+    home_subs = []
+    away_subs = []
+    home_batting = False
+    for half in gc.halfs():
+        for event_info in half:
+            if "batter" not in event_info:
+                text = event_info["text"]
+                if text.startswith("Offsensive"):
+                    if home_batting:
+                        home_subs.append(text)
+                    else:
+                        away_subs.append(text)
+                else:
+                    if home_batting:
+                        away_subs.append(text)
+                    else:
+                        home_subs.append(text)
+        home_batting = not home_batting
+
+    for sublist, lineup in ((home_subs, gc.home_lineup), (away_subs, gc.away_lineup)):
+        st = subtracker.SubTracker(lineup)
+        subparser = psp.PointStreakParser(st, names_in_game)
+        for sub in sublist:
+            subparser.parse_event(sub)
+        for player in lineup:
+            if len(player.starting_position) != 1:
+                logger.error("Error determining positions for {}.  starting position list {}".format(player.name, player.starting_position))
+            else:
+                player.set_position(player.starting_position[0])
+
+    print "----Away Subs----"
+    for t in away_subs:
+        print t
+    print "----Home Subs----"
+    for t in home_subs:
+        print t
+
 
     if game is None:
         game = gamestate.GameState()
@@ -189,12 +228,8 @@ def parse_from_container(gc, game=None, session=None):
         # Parse plays
         #=======================================================================
 
-
-        # pass game to parser
-        #TODO: the game wrapper for point streak should be instanced here...
-        # it might make sense to just instance a new parser for each game.
-        names_in_game = [p.name for p in gc.away_roster + gc.home_roster]
-        parser = psp.PointStreakParser(game, names_in_game)
+        gw = gamewrapper.GameWrapper(game)
+        parser = psp.PointStreakParser(gw, names_in_game)
 
         for half in gc.halfs():
             game.new_half()

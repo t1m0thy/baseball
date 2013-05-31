@@ -8,6 +8,7 @@ import pyparsing as pp
 
 import pointstreakparser as psp
 import pointstreakscraper as pss
+import gamewrapper
 import gamestate
 
 logger = logging.getLogger("main")
@@ -16,7 +17,8 @@ logger = logging.getLogger("main")
 class TestCase(unittest.TestCase):
     def setUp(self):
         self.game = gamestate.GameState()
-        self.parser = psp.PointStreakParser(self.game, ["Collin Shaw"])
+
+        self.parser = psp.PointStreakParser(gamewrapper.GameWrapper(self.game), ["Collin Shaw"])
         self.test_game_id = "109440"
 
     # def test_cs(self):

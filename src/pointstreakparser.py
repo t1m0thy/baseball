@@ -11,15 +11,11 @@ class PointStreakParser:
     """
 
     """
-    def __init__(self, game=None, player_names=[]):
-        self.gamewrap = gamewrapper.GameWrapper(game)
+    def __init__(self, gamewrap=None, player_names=[]):
+        self.gamewrap = gamewrap
         self.event_cache = []
         self.player_names = player_names
         self.setup_parser()
-
-    def set_game(self, game):
-        self.event_cache = []
-        self.gamewrap.set_game(game)
 
     def setup_parser(self):
         #=======================================================================
@@ -98,7 +94,7 @@ class PointStreakParser:
         #===============================================================================
         foul = pp.Optional(pp.CaselessLiteral('F').setResultsName(constants.PARSING_OUTS.FOUL))
         pop = pp.CaselessLiteral("P") + pp.Word(pp.nums).setResultsName(constants.PARSING.POSITION)
-        unassisted_out = (pp.Word(pp.nums).setResultsName(constants.PARSING.POSITION) + pp.CaselessLiteral("U")).setResultsName(constants.PARSING_OUTS.UNASSISTED)
+        unassisted_out = (pp.CaselessLiteral("U") + (pp.Word(pp.nums).setResultsName(constants.PARSING.POSITION))| (pp.Word(pp.nums).setResultsName(constants.PARSING.POSITION) + pp.CaselessLiteral("U"))).setResultsName(constants.PARSING_OUTS.UNASSISTED)
         line_drive = (pp.CaselessLiteral("L") + pp.Word(pp.nums).setResultsName(constants.PARSING.POSITION) + foul).setResultsName(constants.PARSING_OUTS.LINE_DRIVE)
         popup = ((foul + pop) | (pop + foul)).setResultsName(constants.PARSING_OUTS.POPUP)
         thrown_out = (pp.delimitedList(pp.Word(pp.nums), "-")+pp.Optional(dash)).setResultsName(constants.PARSING_OUTS.THROWN_OUT)

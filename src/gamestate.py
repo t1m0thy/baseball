@@ -291,12 +291,51 @@ class GameState:
         self.home_lineup = lineup
         for p in self.home_lineup:
             p.plate_appearances = 0
+        if not self.home_lineup.is_complete(raise_reason=False):
+            options = self.home_lineup.find_complete_positions()
+            if len(options) == 1:
+                for player, position in zip(self.home_lineup, options[0]):
+                    if player.position != position:
+                        d = {"name": player.name,
+                             "to_p": position,
+                             "from_p": player.position}
+                        self.logger.warning("Automatically Moving {name} to position {to_p} from position {from_p}".format(**d))
+                        player.position = position
+            elif len(options) > 1:
+                s = "\n".join([p.name + " " + str(p.all_positions) for p in self.home_lineup])
+                raise LineupError("Too many potential self.home_lineups to find the starting home lineup \n" + s)
+            else:
+                s = "\n".join([p.name + " " + str(p.all_positions) for p in self.home_lineup])
+                raise LineupError("Can not determine complete fielding home lineup from \n" + s)
+        if not self.home_lineup.is_complete(raise_reason=False) and not self.critical_errors:
+            s = "\n".join([p.name + " " + str(p.all_positions) for p in self.home_lineup])
+            raise LineupError("lineup not complete \n" + s)
 
     def set_away_lineup(self, lineup):
         """ set away starting lineup with Lineup object """
         self.away_lineup = lineup
         for p in self.away_lineup:
             p.plate_appearances = 0
+        if not self.away_lineup.is_complete(raise_reason=False):
+            options = self.away_lineup.find_complete_positions()
+            if len(options) == 1:
+                for player, position in zip(self.away_lineup, options[0]):
+                    if player.position != position:
+                        d = {"name": player.name,
+                             "to_p": position,
+                             "from_p": player.position}
+                        self.logger.warning("Automatically Moving {name} to position {to_p} from position {from_p}".format(**d))
+                        player.position = position
+            elif len(options) > 1:
+                s = "\n".join([p.name + " " + str(p.all_positions) for p in self.away_lineup])
+                raise LineupError("Too many potential self.away_lineups to find the starting away lineup \n" + s)
+            else:
+                s = "\n".join([p.name + " " + str(p.all_positions) for p in self.away_lineup])
+                raise LineupError("Can not determine complete fielding away lineup from \n" + s)
+        if not self.away_lineup.is_complete(raise_reason=False) and not self.critical_errors:
+            s = "\n".join([p.name + " " + str(p.all_positions) for p in self.away_lineup])
+            raise LineupError("lineup not complete \n" + s)
+
 
     def set_home_roster(self, roster):
         """ set all home players appearing in this game"""
@@ -1613,8 +1652,12 @@ class GameState:
             logging.info("Offensive Sub -- {} running for {} at {}".format(new_player_name, replacing_name, base))
         else:
             new_player.set_pinch_hitter(True)
-            new_player.set_position('PH')
-            logging.info("Offensive Sub -- {} hitting for {}".format(new_player_name, replacing_name))
+            if self._current_batting_roster().find_player_by_position('P') == new_player and replacing_name == '':
+                # the pitcher is now going to bat
+                logging.info("Pitcher {} will start batting")
+            else:
+                new_player.set_position('PH')
+                logging.info("Offensive Sub -- {} hitting for {}".format(new_player_name, replacing_name))
 
         if replacing_name.strip() == '':
             if pinch_runner:

@@ -182,6 +182,10 @@ class PointStreakScraper(GameScraper):
                         s = "\n".join([p.name + " " + str(p.all_positions) for p in lineup])
                         logger.critical("Can not determine complete fielding lineup from \n" + s)
                         self.critical_errors = True
+                if not lineup.is_complete(raise_reason=False) and not self.critical_errors:
+                    s = "\n".join([p.name + " " + str(p.all_positions) for p in lineup])
+                    logger.critical("lineup not complete \n" + s)
+                    self.critical_errors = True
 
             except LineupError, e:
                 logging.error(str(e) + "\n" + which_lineup + "\n" + str(lineup))
