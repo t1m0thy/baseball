@@ -182,7 +182,10 @@ def parse_from_container(gc, game=None, session=None):
         st = subtracker.SubTracker(lineup)
         subparser = psp.PointStreakParser(st, names_in_game)
         for sub in sublist:
-            subparser.parse_event(sub)
+            try:
+                subparser.parse_event(sub)
+            except Exception, e:
+                logger.critical("Problem parsing sub from: {}.  {}".format(sub, str(e)))
         for player in lineup:
             if len(player.starting_position) != 1:
                 logger.error("Error determining positions for {}.  starting position list {}".format(player.name, player.starting_position))
