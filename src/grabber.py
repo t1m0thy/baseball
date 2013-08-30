@@ -26,6 +26,7 @@ loghelp = """log level: one of 'all', 'debug', 'info', 'warn', 'error', 'critica
                 Default is 'warn'"""
 parser.add_argument('-l', '--log', action="store", default="warn", help=loghelp)
 parser.add_argument('-n', '--no_remote', action="store_true", default=False, help="don't apply changes to remote mysql database")
+parser.add_argument('-p', '--players_only', action="store_true", default=False, help="only pull game and player info, no events")
 
 options = parser.parse_args()
 
@@ -62,7 +63,10 @@ def main():
                     try:
                         delete_game(session, gameid)
                         print ">>>> processing {}".format(gameid)
-                        manager.import_game(gameid, PERSISTENT_FILE_PATH, session=session)
+                        if options.players_only:
+                            manager.setup_scraper(gameid, PERSISTENT_FILE_PATH, session=session)
+                        else:
+                            manager.import_game(gameid, PERSISTENT_FILE_PATH, session=session)
 
                         jm.complete_job(gameid, group)
                         jm.save()
