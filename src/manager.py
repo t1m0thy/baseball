@@ -64,6 +64,7 @@ def setup_scraper(gameid, cache_path=None, session=None):
     if session:
         for team_name in (home, away):
             session.query(teaminfomodel.TeamInfo).filter_by(FULL_NAME=team_name)
+            #TODO: put home and away teams into the TeamInfo
 
     game_info = gameinfo.GameInfo(gameid)
     game_info.set_game_info(scraper.game_info)
@@ -185,7 +186,7 @@ def parse_from_container(gc, game=None, session=None):
             try:
                 subparser.parse_event(sub)
             except Exception, e:
-                logger.critical("Problem parsing sub from: {}.  {}".format(sub, str(e)))
+                logger.critical("Problem parsing sub from: {} {}".format(sub, str(e)))
         for player in lineup:
             if len(player.starting_position) != 1:
                 logger.error("Error determining positions for {}.  starting position list {}".format(player.name, player.starting_position))
@@ -293,7 +294,7 @@ def init_database(use_mysql=False, dbname="sbs"):
                         port=os.environ.get('MYSQL_PORT', 3006),
                         dbname=dbname
                         )
-        mysql_setup = "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}".format(**db_setup)
+        mysql_setup = "mysql+mysqldb://{user}:{password}@{host}:{port}/{dbname}?charset=utf8".format(**db_setup)
         engine = create_engine(mysql_setup, echo=False)
     else:
         engine = create_engine('sqlite:///data.sqlite', echo=False)
